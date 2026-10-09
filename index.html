@@ -99,7 +99,7 @@ import {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    /*
+    
     const zakazForm = document.getElementById("zakazForm"); const zakazXabar = document.getElementById("zakazXabar"); const zakazTugma = zakazForm.querySelector('button[type="submit"]');
 zakazForm.addEventListener("submit", async (event) => { event.preventDefault();
 const user = auth.currentUser;
@@ -115,7 +115,7 @@ zakazXabar.textContent =
 zakazForm.reset();
 } catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + error.code; } finally { zakazTugma.disabled = false; } });
 
-  */
+  
     const loginSection = document.getElementById("loginSection");
     const asosiySahifa = document.getElementById("asosiySahifa");
     const emailInput = document.getElementById("email");
