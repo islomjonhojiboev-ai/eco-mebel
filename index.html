@@ -19,12 +19,25 @@
 
   <button id="loginBtn" type="button">Kirish</button>
 
-  <p id="xabar"></p>
+  <p id="xabar"></p> 
+  <div id="asosiySahifa" style="display: none;">
+  <hr>
+  <h2>Eco Mebel bosh sahifasi</h2>
+  <p id="foydalanuvchiEmail"></p>
+  <p>Saytga xush kelibsiz!</p>
+
+  <button id="logoutBtn" type="button">Chiqish</button>
+</div>
 
   <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
     const firebaseConfig = {
     apiKey: "AIzaSyDRohvTKAXBa1y8IywkUZD00ZmKgw746Ug",
@@ -46,6 +59,9 @@
 
       xabar.textContent = "Urinish...";
       xabar.style.color = "blue";
+      document.getElementById("asosiySahifa").style.display = "block";
+document.getElementById("foydalanuvchiEmail").textContent =
+  "Kirdingiz: " + email;
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
@@ -57,6 +73,19 @@
         xabar.style.color = "red";
       }
     });
+    onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById("asosiySahifa").style.display = "block";
+    document.getElementById("foydalanuvchiEmail").textContent =
+      "Kirdingiz: " + user.email;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  signOut(auth);
+  document.getElementById("asosiySahifa").style.display = "none";
+  document.getElementById("xabar").textContent = "Siz chiqdingiz.";
+});
   </script>
 </body>
 </html>
