@@ -241,6 +241,18 @@ zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if
     ];
 
     const qator = document.createElement("tr");
+    const holatRanglari = {
+  yangi: "#E3F2FD",
+  ishlab_chiqarishda: "#FFF3CD",
+  tayyor: "#D1E7DD",
+  topshirildi: "#E9ECEF",
+  bekor_qilindi: "#F8D7DA"
+};
+
+qator.style.backgroundColor =
+  holatRanglari[zakaz.holat  "yangi"]  "#FFFFFF";
+
+qator.style.color = "#212529";
 
     for (const [indeks, qiymat] of qiymatlar.entries()) { const katak = document.createElement("td");
 if (indeks === 6) { const tanlash = document.createElement("select");
