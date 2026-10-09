@@ -49,23 +49,8 @@
 </form>
 
 <p id="zakazXabar"></p>
-    const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-    const zakazForm = document.getElementById("zakazForm"); const zakazXabar = document.getElementById("zakazXabar"); const zakazTugma = zakazForm.querySelector('button[type="submit"]');
-zakazForm.addEventListener("submit", async (event) => { event.preventDefault();
-const user = auth.currentUser;
-if (!user) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Avval dasturga kiring."; return; }
-const ism = document.getElementById("ism").value.trim(); const telefon = document.getElementById("telefon").value.trim(); const mebel = document.getElementById("mebel").value.trim(); const olcham = document.getElementById("olcham").value.trim(); const izoh = document.getElementById("izoh").value.trim();
-if (!ism  !telefon  !mebel) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Ism, telefon va mebel maydonlarini to‘ldiring."; return; }
-zakazTugma.disabled = true; zakazXabar.style.color = "blue"; zakazXabar.textContent = "Zakaz saqlanmoqda...";
-try { const zakaz = await addDoc(collection(db, "zakazlar"), { ism: ism, telefon: telefon, mebel: mebel, olcham: olcham, izoh: izoh, userId: user.uid, holat: "yangi", yaratilganVaqt: serverTimestamp() });
-zakazXabar.style.color = "green";
-zakazXabar.textContent =
-  "Zakaz saqlandi! Zakaz raqami: " + zakaz.id;
+    
 
-zakazForm.reset();
-} catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + error.code; } finally { zakazTugma.disabled = false; } });
 
   <script type="module">
     import {
@@ -94,8 +79,22 @@ zakazForm.reset();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const zakazForm = document.getElementById("zakazForm"); const zakazXabar = document.getElementById("zakazXabar"); const zakazTugma = zakazForm.querySelector('button[type="submit"]');
+zakazForm.addEventListener("submit", async (event) => { event.preventDefault();
+const user = auth.currentUser;
+if (!user) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Avval dasturga kiring."; return; }
+const ism = document.getElementById("ism").value.trim(); const telefon = document.getElementById("telefon").value.trim(); const mebel = document.getElementById("mebel").value.trim(); const olcham = document.getElementById("olcham").value.trim(); const izoh = document.getElementById("izoh").value.trim();
+if (!ism  !telefon  !mebel) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Ism, telefon va mebel maydonlarini to‘ldiring."; return; }
+zakazTugma.disabled = true; zakazXabar.style.color = "blue"; zakazXabar.textContent = "Zakaz saqlanmoqda...";
+try { const zakaz = await addDoc(collection(db, "zakazlar"), { ism: ism, telefon: telefon, mebel: mebel, olcham: olcham, izoh: izoh, userId: user.uid, holat: "yangi", yaratilganVaqt: serverTimestamp() });
+zakazXabar.style.color = "green";
+zakazXabar.textContent =
+  "Zakaz saqlandi! Zakaz raqami: " + zakaz.id;
 
-    const loginSection = document.getElementById("loginSection");
+zakazForm.reset();
+} catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + error.code; } finally { zakazTugma.disabled = false; } });
+
+   const loginSection = document.getElementById("loginSection");
     const asosiySahifa = document.getElementById("asosiySahifa");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
