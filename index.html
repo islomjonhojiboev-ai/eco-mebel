@@ -50,7 +50,24 @@
 
 <p id="zakazXabar"></p>
     
+<script>
+  window.addEventListener("error", function(event) {
+    alert(
+      "Tekshiruv: " +
+      (event.message || "Skript yuklanmadi") +
+      "\nQator: " + (event.lineno || "noma’lum")
+    );
+  });
 
+  window.addEventListener("unhandledrejection", function(event) {
+    const error = event.reason;
+
+    alert(
+      "Tekshiruv: " +
+      (error && error.message ? error.message : String(error))
+    );
+  });
+</script>
 
   <script type="module">
     /*
