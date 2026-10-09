@@ -49,6 +49,20 @@
 </form>
 
 <p id="zakazXabar"></p>
+    <script>
+  document.getElementById("zakazForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const ism = document.getElementById("ism").value;
+    const telefon = document.getElementById("telefon").value;
+
+    document.getElementById("zakazXabar").textContent =
+      "Rahmat, " + ism + "! Zakazingiz qabul qilindi. Tez orada " +
+      telefon + " raqamiga bog‘lanamiz.";
+
+    document.getElementById("zakazForm").reset();
+  });
+</script>
 
     <button id="logoutBtn" type="button">Chiqish</button>
   </section>
