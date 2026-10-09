@@ -9,83 +9,91 @@
   <h1>Eco Mebel</h1>
   <p>by Islomjon Hojiboev</p>
 
-  <h2>Kirish</h2>
+  <section id="loginSection">
+    <h2>Kirish</h2>
 
-  <input id="email" type="email" placeholder="Email manzil">
-  <br><br>
+    <input id="email" type="email" placeholder="Email manzil">
+    <br><br>
 
-  <input id="password" type="password" placeholder="Parol">
-  <br><br>
+    <input id="password" type="password" placeholder="Parol">
+    <br><br>
 
-  <button id="loginBtn" type="button">Kirish</button>
+    <button id="loginBtn" type="button">Kirish</button>
+    <p id="xabar"></p>
+  </section>
 
-  <p id="xabar"></p> 
-  <div id="asosiySahifa" style="display: none;">
-  <hr>
-  <h2>Eco Mebel bosh sahifasi</h2>
-  <p id="foydalanuvchiEmail"></p>
-  <p>Saytga xush kelibsiz!</p>
+  <section id="asosiySahifa" style="display: none;">
+    <hr>
+    <h2>Eco Mebel bosh sahifasi</h2>
+    <p id="foydalanuvchiEmail"></p>
+    <p>Saytga xush kelibsiz!</p>
 
-  <button id="logoutBtn" type="button">Chiqish</button>
-</div>
+    <button id="logoutBtn" type="button">Chiqish</button>
+  </section>
 
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import {
-  getAuth,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
     const firebaseConfig = {
-    apiKey: "AIzaSyDRohvTKAXBa1y8IywkUZD00ZmKgw746Ug",
-    authDomain: "eco-mebel.firebaseapp.com",
-    projectId: "eco-mebel",
-    storageBucket: "eco-mebel.firebasestorage.app",
-    messagingSenderId: "55907548196",
-    appId: "1:55907548196:web:318de523be887425feecb1",
-    measurementId: "G-GH0YE8FE3R"
-  };
+      apiKey: "AIzaSyDRohvTKAXBa1y8IywkUZD00ZmKgw746Ug",
+      authDomain: "eco-mebel.firebaseapp.com",
+      projectId: "eco-mebel",
+      storageBucket: "eco-mebel.firebasestorage.app",
+      messagingSenderId: "55907548196",
+      appId: "1:55907548196:web:318de523be887425feecb1"
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const xabar = document.getElementById("xabar");
+    const loginSection = document.getElementById("loginSection");
+    const asosiySahifa = document.getElementById("asosiySahifa");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const xabar = document.getElementById("xabar");
+    const foydalanuvchiEmail = document.getElementById("foydalanuvchiEmail");
+
+    loginBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
 
       xabar.textContent = "Urinish...";
       xabar.style.color = "blue";
-      document.getElementById("asosiySahifa").style.display = "block";
-document.getElementById("foydalanuvchiEmail").textContent =
-  "Kirdingiz: " + email;
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
         xabar.textContent = "Muvaffaqiyatli kirdingiz!";
         xabar.style.color = "green";
       } catch (error) {
-        console.error("Login xatolik:", error);
-        xabar.textContent = "Xatolik: " + error.code + " - " + error.message;
+        xabar.textContent = "Xatolik: " + error.code;
         xabar.style.color = "red";
       }
     });
-    onAuthStateChanged(auth, (user) => {
-  if (user) {
-    document.getElementById("asosiySahifa").style.display = "block";
-    document.getElementById("foydalanuvchiEmail").textContent =
-      "Kirdingiz: " + user.email;
-  }
-});
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  signOut(auth);
-  document.getElementById("asosiySahifa").style.display = "none";
-  document.getElementById("xabar").textContent = "Siz chiqdingiz.";
-});
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginSection.style.display = "none";
+        asosiySahifa.style.display = "block";
+        foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
+      } else {
+        loginSection.style.display = "block";
+        asosiySahifa.style.display = "none";
+      }
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      xabar.textContent = "Siz tizimdan chiqdingiz.";
+      xabar.style.color = "blue";
+    });
   </script>
 </body>
 </html>
