@@ -113,13 +113,38 @@ if (!ism  ||!telefon || !mebel) {
   return;
 }
 zakazTugma.disabled = true; zakazXabar.style.color = "blue"; zakazXabar.textContent = "Zakaz saqlanmoqda...";
-try { const zakaz = await addDoc(collection(db, "zakazlar"), { ism: ism, telefon: telefon, mebel: mebel, olcham: olcham, izoh: izoh, userId: user.uid, holat: "yangi", yaratilganVaqt: serverTimestamp() });
-zakazXabar.style.color = "green";
-zakazXabar.textContent =
-  "Zakaz saqlandi! Zakaz raqami: " + zakaz.id;
+try { const hisoblagichRef = doc(db, "hisoblagichlar", "zakazlar"); const yangiZakazRef = doc(collection(db, "zakazlar"));
+const zakazRaqami = await runTransaction(db, async (transaction) => { const hisoblagich = await transaction.get(hisoblagichRef);
+const oxirgiRaqam = hisoblagich.exists()
+  ? hisoblagich.data().oxirgiRaqam
+  : 0;
 
-zakazForm.reset();
-} catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + error.code; } finally { zakazTugma.disabled = false; } });
+if (!Number.isSafeInteger(oxirgiRaqam) || oxirgiRaqam < 0) {
+  throw new Error("Hisoblagich qiymati noto‘g‘ri.");
+}
+
+const yangiRaqam = oxirgiRaqam + 1;
+
+transaction.set(hisoblagichRef, {
+  oxirgiRaqam: yangiRaqam
+});
+
+transaction.set(yangiZakazRef, {
+  zakazRaqami: yangiRaqam,
+  ism: ism,
+  telefon: telefon,
+  mebel: mebel,
+  olcham: olcham,
+  izoh: izoh,
+  userId: user.uid,
+  holat: "yangi",
+  yaratilganVaqt: serverTimestamp()
+});
+
+return yangiRaqam;
+});
+zakazXabar.style.color = "green"; zakazXabar.textContent = "Zakaz saqlandi! Zakaz raqami: " + String(zakazRaqami).padStart(4, "0");
+zakazForm.reset(); } catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + (error.code || error.message); } finally { zakazTugma.disabled = false; } });
 
   
     const loginSection = document.getElementById("loginSection");
