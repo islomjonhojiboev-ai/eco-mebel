@@ -129,8 +129,7 @@ zakazForm.reset();
       const email = emailInput.value.trim();
       const password = passwordInput.value;
 
-      xabar.textContent =
-  "Xatolik: " + (error.code  error.message  String(error));
+      xabar.textContent = "Urinish...";
       xabar.style.color = "blue";
 
       try {
@@ -138,7 +137,7 @@ zakazForm.reset();
         xabar.textContent = "Muvaffaqiyatli kirdingiz!";
         xabar.style.color = "green";
       } catch (error) {
-        xabar.textContent = "Xatolik: " + error.code;
+        xabar.textContent = "Xatolik: " + (error.code  error.message  String(error));
         xabar.style.color = "red";
       }
     });
