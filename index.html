@@ -137,7 +137,7 @@ zakazForm.reset();
         xabar.textContent = "Muvaffaqiyatli kirdingiz!";
         xabar.style.color = "green";
       } catch (error) {
-        xabar.textContent = "Xatolik: " + (error.code  error.message  String(error));
+        xabar.textContent = "Xatolik: " + String(error);
         xabar.style.color = "red";
       }
     });
