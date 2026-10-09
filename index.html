@@ -49,6 +49,29 @@
 </form>
 
 <p id="zakazXabar"></p>
+    <section id="zakazlarBolimi" hidden>
+  <h2>Zakazlar ro‘yxati</h2>
+  <p id="zakazlarHolati"></p>
+
+  <div style="overflow-x: auto;">
+    <table border="1" cellpadding="8"
+           style="border-collapse: collapse; width: 100%;">
+      <thead>
+        <tr>
+          <th>Zakaz raqami</th>
+          <th>Ism</th>
+          <th>Telefon</th>
+          <th>Mebel</th>
+          <th>O‘lcham</th>
+          <th>Izoh</th>
+          <th>Holat</th>
+          <th>Sana</th>
+        </tr>
+      </thead>
+      <tbody id="zakazlarJadvali"></tbody>
+    </table>
+  </div>
+</section>
     <button id="logoutBtn" type="button">Chiqish</button>
 <script>
   window.addEventListener("error", function(event) {
@@ -77,7 +100,7 @@ import {
   addDoc,
   serverTimestamp,
   doc,
-  runTransaction
+  runTransaction,onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 
@@ -172,17 +195,66 @@ zakazForm.reset(); } catch (error) { zakazXabar.style.color = "red"; zakazXabar.
         xabar.style.color = "red";
       }
     });
+const zakazlarBolimi = document.getElementById("zakazlarBolimi"); const zakazlarHolati = document.getElementById("zakazlarHolati"); const zakazlarJadvali = document.getElementById("zakazlarJadvali");
+let zakazlarniToxtatish = null;
+onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
+zakazlarJadvali.replaceChildren(); zakazlarHolati.textContent = ""; zakazlarBolimi.hidden = true;
+if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
+loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
+zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
+zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
+  zakazlarJadvali.replaceChildren();
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        loginSection.style.display = "none";
-        asosiySahifa.style.display = "block";
-        foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
-      } else {
-        loginSection.style.display = "block";
-        asosiySahifa.style.display = "none";
-      }
-    });
+  const zakazlar = snapshot.docs.map((hujjat) => hujjat.data());
+
+  zakazlar.sort((a, b) => {
+    return (b.zakazRaqami ?? 0) - (a.zakazRaqami ?? 0);
+  });
+
+  zakazlarHolati.textContent = zakazlar.length
+    ? "Jami zakazlar: " + zakazlar.length
+    : "Hozircha zakazlar yo‘q.";
+
+  for (const zakaz of zakazlar) {
+    const raqam = Number.isInteger(zakaz.zakazRaqami)
+      ? String(zakaz.zakazRaqami).padStart(4, "0")
+      : "Eski zakaz";
+
+    const sana = zakaz.yaratilganVaqt?.toDate
+      ? zakaz.yaratilganVaqt.toDate().toLocaleString("uz-UZ")
+      : "—";
+
+    const qiymatlar = [
+      raqam,
+      zakaz.ism ?? "—",
+      zakaz.telefon ?? "—",
+      zakaz.mebel ?? "—",
+      zakaz.olcham ?? "—",
+      zakaz.izoh ?? "—",
+      zakaz.holat ?? "—",
+      sana
+    ];
+
+    const qator = document.createElement("tr");
+
+    for (const qiymat of qiymatlar) {
+      const katak = document.createElement("td");
+      katak.textContent = String(qiymat);
+      qator.appendChild(katak);
+    }
+
+    zakazlarJadvali.appendChild(qator);
+  }
+},
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  zakazlarJadvali.replaceChildren();
+  zakazlarHolati.textContent =
+    "Zakazlarni yuklashda xatolik: " + error.code;
+}
+); });
+    
 
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
