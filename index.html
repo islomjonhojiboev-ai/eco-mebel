@@ -100,7 +100,9 @@ import {
   addDoc,
   serverTimestamp,
   doc,
-  runTransaction,onSnapshot
+  runTransaction,
+onSnapshot,
+updateDoc
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 
@@ -205,7 +207,10 @@ zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqd
 zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
   zakazlarJadvali.replaceChildren();
 
-  const zakazlar = snapshot.docs.map((hujjat) => hujjat.data());
+  const zakazlar = snapshot.docs.map((hujjat) => ({
+  ...hujjat.data(),
+  id: hujjat.id
+}));
 
   zakazlar.sort((a, b) => {
     return (b.zakazRaqami ?? 0) - (a.zakazRaqami ?? 0);
@@ -237,11 +242,65 @@ zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if
 
     const qator = document.createElement("tr");
 
-    for (const qiymat of qiymatlar) {
-      const katak = document.createElement("td");
-      katak.textContent = String(qiymat);
-      qator.appendChild(katak);
-    }
+    for (const [indeks, qiymat] of qiymatlar.entries()) { const katak = document.createElement("td");
+if (indeks === 6) { const tanlash = document.createElement("select");
+const holatlar = [
+  ["yangi", "Yangi"],
+  ["ishlab_chiqarishda", "Ishlab chiqarishda"],
+  ["tayyor", "Tayyor"],
+  ["topshirildi", "Topshirildi"],
+  ["bekor_qilindi", "Bekor qilindi"]
+];
+
+const oldingiHolat = zakaz.holat || "yangi";
+
+if (!holatlar.some(([kod]) => kod === oldingiHolat)) {
+  holatlar.unshift([oldingiHolat, oldingiHolat]);
+}
+
+for (const [kod, nom] of holatlar) {
+  const variant = document.createElement("option");
+  variant.value = kod;
+  variant.textContent = nom;
+  tanlash.appendChild(variant);
+}
+
+tanlash.value = oldingiHolat;
+
+tanlash.addEventListener("change", async () => {
+  const yangiHolat = tanlash.value;
+
+  const tasdiq = window.confirm(
+    "Zakaz " + raqam + " holatini “" +
+    tanlash.selectedOptions[0].textContent +
+    "”ga o‘zgartirasizmi?"
+  );
+
+  if (!tasdiq) {
+    tanlash.value = oldingiHolat;
+    return;
+  }
+
+  tanlash.disabled = true;
+
+  try {
+    await updateDoc(doc(db, "zakazlar", zakaz.id), {
+      holat: yangiHolat
+    });
+  } catch (error) {
+    tanlash.value = oldingiHolat;
+    alert(
+      "Holat saqlanmadi: " +
+      (error.code || error.message)
+    );
+  } finally {
+    tanlash.disabled = false;
+  }
+});
+
+katak.appendChild(tanlash);
+} else { katak.textContent = String(qiymat); }
+qator.appendChild(katak); }
 
     zakazlarJadvali.appendChild(qator);
   }
