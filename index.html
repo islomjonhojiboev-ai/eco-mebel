@@ -194,7 +194,7 @@ zakazForm.reset(); } catch (error) { zakazXabar.style.color = "red"; zakazXabar.
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const xabar = document.getElementById("xabar");
-    const foydalanuvchiEmail = document.getElementById("foydalanuvchiEmail");
+    const foydalanuvchiEmail = document.getElementById("foydalanuvchiEmail");const zakazlarBolimi = document.getElementById("zakazlarBolimi"); const zakazlarHolati = document.getElementById("zakazlarHolati"); const zakazlarJadvali = document.getElementById("zakazlarJadvali");
     const zakazQidiruv = document.getElementById("zakazQidiruv"); const holatFiltri = document.getElementById("holatFiltri"); const filtrTozalash = document.getElementById("filtrTozalash");
 function zakazlarniFiltrlash() { const qidiruv = zakazQidiruv.value.trim().toLowerCase(); const tanlanganHolat = holatFiltri.value; const qatorlar = Array.from(zakazlarJadvali.rows);
 let korinadiganSoni = 0;
@@ -239,7 +239,49 @@ zakazlarniFiltrlash();
         xabar.style.color = "red";
       }
     });
-const zakazlarBolimi = document.getElementById("zakazlarBolimi"); const zakazlarHolati = document.getElementById("zakazlarHolati"); const zakazlarJadvali = document.getElementById("zakazlarJadvali");
+const zakazlarBolimi = document.getElementById("zakazlarBolimi"); const zakazlarHolati = documenttanlanganHolat === ""
+  ? true
+  : holat === tanlanganHolat;
+
+const korsatish = qidiruvMos && holatMos;
+qator.hidden = !korsatish;
+
+if (korsatish) {
+  korinadiganSoni += 1;
+}
+}
+if (qatorlar.length > 0) { zakazlarHolati.textContent = "Ko‘rsatilmoqda: " + korinadiganSoni + " / Jami zakazlar: " + qatorlar.length; } }
+zakazQidiruv.addEventListener("input", zakazlarniFiltrlash); holatFiltri.addEventListener("change", zakazlarniFiltrlash);
+filtrTozalash.addEventListener("click", () => { zakazQidiruv.value = ""; holatFiltri.value = ""; zakazlarniFiltrlash(); });
+const jadvalKuzatuvchi = new MutationObserver(() => { zakazlarniFiltrlash(); });
+jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
+zakazlarniFiltrlash();
+
+    loginBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      xabar.textContent = "Urinish...";
+      xabar.style.color = "blue";
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        xabar.textContent = "Muvaffaqiyatli kirdingiz!";
+        xabar.style.color = "green";
+      } catch (error) {
+        xabar.textContent = "Xatolik: " + String(error);
+        xabar.style.color = "red";
+      }
+    });
+
+let zakazlarniToxtatish = null;
+onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
+zakazlarJadvali.replaceChildren(); zakazlarHolati.textContent = ""; zakazlarBolimi.hidden = true;
+if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
+loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
+zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
+zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
+  zakazlarJadvali.replaceChildren();.getElementById("zakazlarHolati"); const zakazlarJadvali = document.getElementById("zakazlarJadvali");
 let zakazlarniToxtatish = null;
 onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
 zakazlarJadvali.replaceChildren(); zakazlarHolati.textContent = ""; zakazlarBolimi.hidden = true;
