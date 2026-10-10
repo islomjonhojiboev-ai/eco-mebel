@@ -205,9 +205,8 @@ const qidiruvMos = matn.includes(qidiruv);
 const holatMenyusi = qator.cells[6].querySelector("select");
 const holat = holatMenyusi ? holatMenyusi.value : "";
 
-const holatMos = tanlanganHolat === ""
-  ? true
-  : holat === tanlanganHolat;
+const holatMos =
+  tanlanganHolat === "" || holat === tanlanganHolat;
 
 const korsatish = qidiruvMos && holatMos;
 qator.hidden = !korsatish;
@@ -222,19 +221,7 @@ filtrTozalash.addEventListener("click", () => { zakazQidiruv.value = ""; holatFi
 const jadvalKuzatuvchi = new MutationObserver(() => { zakazlarniFiltrlash(); });
 jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
 zakazlarniFiltrlash();
-const korsatish = qidiruvMos && holatMos;
-qator.hidden = !korsatish;
 
-if (korsatish) {
-  korinadiganSoni += 1;
-}
-}
-if (qatorlar.length > 0) { zakazlarHolati.textContent = "Ko‘rsatilmoqda: " + korinadiganSoni + " / Jami zakazlar: " + qatorlar.length; } }
-zakazQidiruv.addEventListener("input", zakazlarniFiltrlash); holatFiltri.addEventListener("change", zakazlarniFiltrlash);
-filtrTozalash.addEventListener("click", () => { zakazQidiruv.value = ""; holatFiltri.value = ""; zakazlarniFiltrlash(); });
-const jadvalKuzatuvchi = new MutationObserver(() => { zakazlarniFiltrlash(); });
-jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
-zakazlarniFiltrlash();
 loginBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
