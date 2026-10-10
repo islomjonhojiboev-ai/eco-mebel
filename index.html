@@ -51,6 +51,21 @@
 <p id="zakazXabar"></p>
     <section id="zakazlarBolimi" hidden>
   <h2>Zakazlar ro‘yxati</h2>
+      <div style="margin-bottom: 12px;">
+  <input id="zakazQidiruv" type="search"
+    placeholder="Zakaz raqami, ism yoki telefon">
+
+  <select id="holatFiltri">
+    <option value="">Barcha holatlar</option>
+    <option value="yangi">Yangi</option>
+    <option value="ishlab_chiqarishda">Ishlab chiqarishda</option>
+    <option value="tayyor">Tayyor</option>
+    <option value="topshirildi">Topshirildi</option>
+    <option value="bekor_qilindi">Bekor qilindi</option>
+  </select>
+
+  <button id="filtrTozalash" type="button">Tozalash</button>
+</div>
   <p id="zakazlarHolati"></p>
 
   <div style="overflow-x: auto;">
