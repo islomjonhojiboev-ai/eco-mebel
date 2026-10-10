@@ -224,25 +224,11 @@ jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
 zakazlarniFiltrlash();
 
     loginBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
-
-      xabar.textContent = "Urinish...";
-      xabar.style.color = "blue";
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        xabar.textContent = "Muvaffaqiyatli kirdingiz!";
-        xabar.style.color = "green";
       } catch (error) {
         xabar.textContent = "Xatolik: " + String(error);
         xabar.style.color = "red";
       }
     });
-const zakazlarBolimi = document.getElementById("zakazlarBolimi"); const zakazlarHolati = documenttanlanganHolat === ""
-  ? true
-  : holat === tanlanganHolat;
-
 const korsatish = qidiruvMos && holatMos;
 qator.hidden = !korsatish;
 
@@ -256,18 +242,23 @@ filtrTozalash.addEventListener("click", () => { zakazQidiruv.value = ""; holatFi
 const jadvalKuzatuvchi = new MutationObserver(() => { zakazlarniFiltrlash(); });
 jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
 zakazlarniFiltrlash();
+loginBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
 
-    loginBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
+  xabar.textContent = "Urinish...";
+  xabar.style.color = "blue";
 
-      xabar.textContent = "Urinish...";
-      xabar.style.color = "blue";
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        xabar.textContent = "Muvaffaqiyatli kirdingiz!";
-        xabar.style.color = "green";
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    xabar.textContent = "Muvaffaqiyatli kirdingiz!";
+    xabar.style.color = "green";
+  } catch (error) {
+    xabar.textContent = "Xatolik: " + String(error);
+    xabar.style.color = "red";
+  }
+});
+    
       } catch (error) {
         xabar.textContent = "Xatolik: " + String(error);
         xabar.style.color = "red";
