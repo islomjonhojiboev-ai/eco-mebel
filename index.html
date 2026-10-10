@@ -241,15 +241,8 @@ loginBtn.addEventListener("click", async () => {
 
 let zakazlarniToxtatish = null;
 onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
-zakazlarJadvali.replaceChildren(); zakazlarHolati.textContent = ""; zakazlarBolimi.hidden = true;
-if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
-loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
-zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
-zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
-  zakazlarJadvali.replaceChildren();.getElementById("zakazlarHolati"); const zakazlarJadvali = document.getElementById("zakazlarJadvali");
-let zakazlarniToxtatish = null;
-onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
-zakazlarJadvali.replaceChildren(); zakazlarHolati.textContent = ""; zakazlarBolimi.hidden = true;
+ zakazlarJadvali.replaceChildren();zakazlarHolati.textContent = "";
+zakazlarBolimi.hidden = true;
 if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
 loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
 zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
