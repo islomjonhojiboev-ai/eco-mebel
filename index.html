@@ -222,13 +222,6 @@ filtrTozalash.addEventListener("click", () => { zakazQidiruv.value = ""; holatFi
 const jadvalKuzatuvchi = new MutationObserver(() => { zakazlarniFiltrlash(); });
 jadvalKuzatuvchi.observe(zakazlarJadvali, { childList: true });
 zakazlarniFiltrlash();
-
-    loginBtn.addEventListener("click", async () => {
-      } catch (error) {
-        xabar.textContent = "Xatolik: " + String(error);
-        xabar.style.color = "red";
-      }
-    });
 const korsatish = qidiruvMos && holatMos;
 qator.hidden = !korsatish;
 
@@ -258,12 +251,6 @@ loginBtn.addEventListener("click", async () => {
     xabar.style.color = "red";
   }
 });
-    
-      } catch (error) {
-        xabar.textContent = "Xatolik: " + String(error);
-        xabar.style.color = "red";
-      }
-    });
 
 let zakazlarniToxtatish = null;
 onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
