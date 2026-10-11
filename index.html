@@ -93,7 +93,11 @@
   Holat bo‘yicha saralash uchun yonidagi menyudan tanlang.
 </p>
 
-<p id="zakazlarHolati"></p>
+<p id="zakazlarHolati"></p><label for="zakazlarRejimi">Ko‘rsatish:</label>
+<select id="zakazlarRejimi">
+  <option value="asosiy">Asosiy zakazlar</option>
+  <option value="arxiv">Arxiv</option>
+</select>
   
 
   <div style="overflow-x: auto;">
@@ -111,7 +115,7 @@
           <th>Sana</th><th>Narx (somoniy)</th>
 <th>Avans (somoniy)</th>
 <th>Qoldiq (somoniy)</th>
-<th>Topshirish sanasi</th>
+<th>Topshirish sanasi</th><th>Amal</th>
         </tr>
       </thead>
       <tbody id="zakazlarJadvali"></tbody>
@@ -328,6 +332,15 @@ loginBtn.addEventListener("click", async () => {
     xabar.textContent = "Xatolik: " + String(error);
     xabar.style.color = "red";
   }
+});const zakazlarRejimi =
+  document.getElementById("zakazlarRejimi");
+
+let zakazlarKorinishiniYangilash = null;
+
+zakazlarRejimi.addEventListener("change", () => {
+  if (zakazlarKorinishiniYangilash) {
+    zakazlarKorinishiniYangilash();
+  }
 });
 
 let zakazlarniToxtatish = null;
@@ -337,21 +350,74 @@ zakazlarBolimi.hidden = true;
 if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
 loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
 zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
-zakazlarniToxtatish = onSnapshot( collection(db, "zakazlar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
+zakazlarniToxtatish = onSnapshot(
+  collection(db, "zakazlar"),
+  function zakazlarniChizish(snapshot) {
+    zakazlarKorinishiniYangilash = () => {
+      zakazlarniChizish(snapshot);
+    }; if (auth.currentUser?.uid !== user.uid) return;const amalKatagi = document.createElement("td");
+const arxivTugma = document.createElement("button");
+
+arxivTugma.type = "button";
+arxivTugma.textContent = arxivRejimi
+  ? "Qaytarish"
+  : "Arxivga olish";
+
+arxivTugma.style.cssText =
+  "border:0;background:transparent;" +
+  "color:#1565c0;text-decoration:underline;" +
+  "cursor:pointer;font:inherit;padding:8px;";
+
+arxivTugma.addEventListener("click", async () => {
+  const savol = arxivRejimi
+    ? "Zakaz " + raqam + " asosiy jadvalga qaytarilsinmi?"
+    : "Zakaz " + raqam +
+      " arxivga olinsinmi? Ma’lumotlari va to‘lovlar tarixi saqlanadi.";
+
+  if (!window.confirm(savol)) return;
+
+  arxivTugma.disabled = true;
+
+  try {
+    await updateDoc(doc(db, "zakazlar", zakaz.id), {
+      arxivlangan: !arxivRejimi,
+      arxivlanganVaqt: arxivRejimi
+        ? null
+        : serverTimestamp()
+    });
+  } catch (error) {
+    alert(
+      "Amal saqlanmadi: " +
+      (error.message || error.code)
+    );
+  } finally {
+    arxivTugma.disabled = false;
+  }
+});
+
+amalKatagi.appendChild(arxivTugma);
+qator.appendChild(amalKatagi);
   zakazlarJadvali.replaceChildren();
 
-  const zakazlar = snapshot.docs.map((hujjat) => ({
-  ...hujjat.data(),
-  id: hujjat.id
-}));
+  const arxivRejimi = zakazlarRejimi.value === "arxiv";
+
+const zakazlar = snapshot.docs
+  .map((hujjat) => ({
+    ...hujjat.data(),
+    id: hujjat.id
+  }))
+  .filter((zakaz) => {
+    return (zakaz.arxivlangan === true) === arxivRejimi;
+  });
 
   zakazlar.sort((a, b) => {
     return (b.zakazRaqami ?? 0) - (a.zakazRaqami ?? 0);
   });
 
   zakazlarHolati.textContent = zakazlar.length
-    ? "Jami zakazlar: " + zakazlar.length
-    : "Hozircha zakazlar yo‘q.";
+  ? (arxivRejimi ? "Arxivdagi zakazlar: " : "Jami zakazlar: ") +
+    zakazlar.length
+  : (arxivRejimi ? "Arxiv bo‘sh." : "Hozircha zakazlar yo‘q.");
 
   for (const zakaz of zakazlar) {
     const raqam = Number.isInteger(zakaz.zakazRaqami)
