@@ -190,7 +190,8 @@ const narx = narxMatni === "" ? null : Number(narxMatni);
 const avans = avansMatni === "" ? 0 : Number(avansMatni);
 
 if (
-  (narx !== null && (!Number.isFinite(narx)  narx < 0)) 
+  (narx !== null && !Number.isFinite(narx)) ||
+  (narx !== null && narx < 0) ||
   !Number.isFinite(avans) ||
   avans < 0
 ) {
