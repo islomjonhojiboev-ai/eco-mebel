@@ -452,11 +452,155 @@ tanlash.addEventListener("change", async () => {
     tanlash.disabled = false;
   }
 });
+katak.appendChild(tanlash); } else if (indeks === 9) { const avansTugma = document.createElement("button"); avansTugma.type = "button"; avansTugma.textContent = String(qiymat); avansTugma.title = "To‘lovlar tarixi va qo‘shimcha to‘lov"; avansTugma.style.cssText = "border:0;background:transparent;color:#1565c0;" + "text-decoration:underline;cursor:pointer;" + "font:inherit;padding:8px;";
+avansTugma.addEventListener("click", async () => { const jamiAvans = Number(zakaz.avans ?? 0); const tarix = Array.isArray(zakaz.tolovlarTarixi) ? zakaz.tolovlarTarixi : [];
+const pul = (son) => Number(son).toFixed(2);
+const tarixQatorlari = [];
 
-katak.appendChild(tanlash);
-} else { katak.textContent = String(qiymat); }
+const tarixJami = tarix.reduce(
+  (jami, tolov) => jami + Number(tolov.summa || 0),
+  0
+);
+
+const oldingiAvans =
+  Math.round((jamiAvans - tarixJami) * 100) / 100;
+
+if (oldingiAvans > 0) {
+  tarixQatorlari.push(
+    "Sana noma’lum — " + pul(oldingiAvans) +
+    " somoniy — Oldingi avans"
+  );
+}
+
+for (const tolov of tarix) {
+  const vaqt = tolov.sana
+    ? new Date(tolov.sana).toLocaleString("uz-UZ")
+    : "Sana noma’lum";
+
+  tarixQatorlari.push(
+    vaqt + " — " + pul(tolov.summa) + " somoniy"
+  );
+}
+
+const narxBor = zakaz.narx != null;
+const qoldiq = narxBor
+  ? pul(Number(zakaz.narx) - jamiAvans)
+  : "Narx kiritilmagan";
+
+const matn = window.prompt(
+  "Zakaz: " + raqam +
+  "\nZakazchi: " + (zakaz.ism || "—") +
+  "\nNarx: " + (narxBor ? pul(zakaz.narx) : "—") +
+  "\nJami to‘langan: " + pul(jamiAvans) +
+  "\nQoldiq: " + qoldiq +
+  "\n\nTO‘LOVLAR TARIXI:\n" +
+  (tarixQatorlari.join("\n") || "Hali to‘lov yo‘q.") +
+  "\n\nYangi berilgan summani kiriting." +
+  "\nFaqat tarixni ko‘rgan bo‘lsangiz, Bekor qilishni bosing.",
+  ""
+);
+
+if (matn === null || matn.trim() === "") return;
+
+const kiritilgan = matn.trim().replace(",", ".");
+
+if (!/^\d+(?:\.\d{1,2})?$/.test(kiritilgan)) {
+  alert("Summani son bilan kiriting. Masalan: 700 yoki 700.50");
+  return;
+}
+
+const yangiTolov = Number(kiritilgan);
+const yangiTiyin = Math.round(yangiTolov * 100);
+
+if (
+  !Number.isFinite(yangiTolov) ||
+  yangiTolov <= 0 ||
+  !Number.isSafeInteger(yangiTiyin)
+) {
+  alert("To‘lov summasi noldan katta bo‘lishi kerak.");
+  return;
+}
+
+const tasdiq = window.confirm(
+  (zakaz.ism || "Zakaz " + raqam) +
+  " uchun " + pul(yangiTolov) +
+  " somoniy qo‘shimcha to‘lov saqlansinmi?"
+);
+
+if (!tasdiq) return;
+
+avansTugma.disabled = true;
+
+const yangiYozuv = {
+  summa: yangiTolov,
+  sana: new Date().toISOString()
+};
+
+try {
+  await runTransaction(db, async (transaction) => {
+    const zakazRef = doc(db, "zakazlar", zakaz.id);
+    const snapshot = await transaction.get(zakazRef);
+
+    if (!snapshot.exists()) {
+      throw new Error("Zakaz topilmadi.");
+    }
+
+    const malumot = snapshot.data();
+    const narx = Number(malumot.narx);
+    const avans = Number(malumot.avans ?? 0);
+
+    if (
+      malumot.narx == null ||
+      !Number.isFinite(narx) ||
+      narx < 0 ||
+      !Number.isFinite(avans) ||
+      avans < 0
+    ) {
+      throw new Error(
+        "Zakaz narxi va avansini tekshiring. Narx kiritilgan bo‘lishi kerak."
+      );
+    }
+
+    const narxTiyin = Math.round(narx * 100);
+    const avansTiyin = Math.round(avans * 100);
+    const jamiTiyin = avansTiyin + yangiTiyin;
+
+    if (!Number.isSafeInteger(jamiTiyin)) {
+      throw new Error("Summa juda katta.");
+    }
+
+    if (jamiTiyin > narxTiyin) {
+      throw new Error(
+        "To‘lov qoldiqdan oshib ketdi. Qoldiq: " +
+        pul((narxTiyin - avansTiyin) / 100) +
+        " somoniy."
+      );
+    }
+
+    const saqlanganTarix =
+      Array.isArray(malumot.tolovlarTarixi)
+        ? malumot.tolovlarTarixi
+        : [];
+
+    transaction.update(zakazRef, {
+      avans: jamiTiyin / 100,
+      qolganSumma: (narxTiyin - jamiTiyin) / 100,
+      tolovlarTarixi: [...saqlanganTarix, yangiYozuv]
+    });
+  });
+
+  alert("Qo‘shimcha to‘lov saqlandi.");
+} catch (error) {
+  alert(
+    "To‘lov saqlanmadi: " +
+    (error.message || error.code)
+  );
+} finally {
+  avansTugma.disabled = false;
+}
+});
+katak.appendChild(avansTugma); } else { katak.textContent = String(qiymat); }
 qator.appendChild(katak); }
-
     zakazlarJadvali.appendChild(qator);
   }
 },
