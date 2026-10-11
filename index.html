@@ -174,7 +174,61 @@ import {
 zakazForm.addEventListener("submit", async (event) => { event.preventDefault();
 const user = auth.currentUser;
 if (!user) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Avval dasturga kiring."; return; }
-const ism = document.getElementById("ism").value.trim(); const telefon = document.getElementById("telefon").value.trim(); const mebel = document.getElementById("mebel").value.trim(); const olcham = document.getElementById("olcham").value.trim(); const izoh = document.getElementById("izoh").value.trim();
+const ism = document.getElementById("ism").value.trim(); const telefon = document.getElementById("telefon").value.trim(); const mebel = document.getElementById("mebel").value.trim(); const olcham = document.getElementById("olcham").value.trim(); const izoh = document.getElementById("izoh").value.trim();const narxMatni =
+  document.getElementById("zakazNarxi").value.trim();
+
+const avansMatni =
+  document.getElementById("zakazAvansi").value.trim();
+
+const topshirishSanasi =
+  document.getElementById("topshirishSanasi").value;
+
+const narx = narxMatni === "" ? null : Number(narxMatni);
+const avans = avansMatni === "" ? 0 : Number(avansMatni);
+
+if (
+  (narx !== null && (!Number.isFinite(narx)  narx < 0)) 
+  !Number.isFinite(avans) ||
+  avans < 0
+) {
+  zakazXabar.style.color = "red";
+  zakazXabar.textContent =
+    "Narx va avansni manfiy bo‘lmagan son bilan kiriting.";
+  return;
+}
+
+if (narx === null && avans > 0) {
+  zakazXabar.style.color = "red";
+  zakazXabar.textContent =
+    "Avans kiritilgan bo‘lsa, zakaz narxini ham kiriting.";
+  return;
+}
+
+const narxHisob =
+  narx === null ? null : Math.round(narx * 100);
+
+const avansHisob = Math.round(avans * 100);
+
+if (
+  (narxHisob !== null && !Number.isSafeInteger(narxHisob)) ||
+  !Number.isSafeInteger(avansHisob)
+) {
+  zakazXabar.style.color = "red";
+  zakazXabar.textContent = "Kiritilgan summa juda katta.";
+  return;
+}
+
+if (narxHisob !== null && avansHisob > narxHisob) {
+  zakazXabar.style.color = "red";
+  zakazXabar.textContent =
+    "Avans zakaz narxidan katta bo‘lishi mumkin emas.";
+  return;
+}
+
+const qolganSumma =
+  narxHisob === null
+    ? null
+    : (narxHisob - avansHisob) / 100;
 if (!ism  ||!telefon || !mebel) {
   zakazXabar.style.color = "red";
   zakazXabar.textContent = "Ism, telefon va mebel maydonlarini to‘ldiring.";
@@ -204,6 +258,11 @@ transaction.set(yangiZakazRef, {
   mebel: mebel,
   olcham: olcham,
   izoh: izoh,
+  narx: narxHisob === null ? null : narxHisob / 100,
+  avans: avansHisob / 100,
+  qolganSumma: qolganSumma,
+  pulBirligi: "TJS",
+  topshirishSanasi: topshirishSanasi || null,
   userId: user.uid,
   holat: "yangi",
   yaratilganVaqt: serverTimestamp()
