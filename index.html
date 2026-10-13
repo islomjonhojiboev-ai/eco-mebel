@@ -355,48 +355,7 @@ zakazlarniToxtatish = onSnapshot(
   function zakazlarniChizish(snapshot) {
     zakazlarKorinishiniYangilash = () => {
       zakazlarniChizish(snapshot);
-    }; if (auth.currentUser?.uid !== user.uid) return;const amalKatagi = document.createElement("td");
-const arxivTugma = document.createElement("button");
-
-arxivTugma.type = "button";
-arxivTugma.textContent = arxivRejimi
-  ? "Qaytarish"
-  : "Arxivga olish";
-
-arxivTugma.style.cssText =
-  "border:0;background:transparent;" +
-  "color:#1565c0;text-decoration:underline;" +
-  "cursor:pointer;font:inherit;padding:8px;";
-
-arxivTugma.addEventListener("click", async () => {
-  const savol = arxivRejimi
-    ? "Zakaz " + raqam + " asosiy jadvalga qaytarilsinmi?"
-    : "Zakaz " + raqam +
-      " arxivga olinsinmi? Ma’lumotlari va to‘lovlar tarixi saqlanadi.";
-
-  if (!window.confirm(savol)) return;
-
-  arxivTugma.disabled = true;
-
-  try {
-    await updateDoc(doc(db, "zakazlar", zakaz.id), {
-      arxivlangan: !arxivRejimi,
-      arxivlanganVaqt: arxivRejimi
-        ? null
-        : serverTimestamp()
-    });
-  } catch (error) {
-    alert(
-      "Amal saqlanmadi: " +
-      (error.message || error.code)
-    );
-  } finally {
-    arxivTugma.disabled = false;
-  }
-});
-
-amalKatagi.appendChild(arxivTugma);
-qator.appendChild(amalKatagi);
+    }; if (auth.currentUser?.uid !== user.uid) return;
   zakazlarJadvali.replaceChildren();
 
   const arxivRejimi = zakazlarRejimi.value === "arxiv";
@@ -667,7 +626,50 @@ try {
 });
 katak.appendChild(avansTugma); } else { katak.textContent = String(qiymat); }
 qator.appendChild(katak); }
-    zakazlarJadvali.appendChild(qator);
+    const amalKatagi = document.createElement("td");
+const arxivTugma = document.createElement("button");
+
+arxivTugma.type = "button";
+arxivTugma.textContent = arxivRejimi
+  ? "Qaytarish"
+  : "Arxivga olish";
+
+arxivTugma.style.cssText =
+  "border:0;background:transparent;" +
+  "color:#1565c0;text-decoration:underline;" +
+  "cursor:pointer;font:inherit;padding:8px;";
+
+arxivTugma.addEventListener("click", async () => {
+  const savol = arxivRejimi
+    ? "Zakaz " + raqam + " asosiy jadvalga qaytarilsinmi?"
+    : "Zakaz " + raqam +
+      " arxivga olinsinmi? Ma’lumotlari va to‘lovlar tarixi saqlanadi.";
+
+  if (!window.confirm(savol)) return;
+
+  arxivTugma.disabled = true;
+
+  try {
+    await updateDoc(doc(db, "zakazlar", zakaz.id), {
+      arxivlangan: !arxivRejimi,
+      arxivlanganVaqt: arxivRejimi
+        ? null
+        : serverTimestamp()
+    });
+  } catch (error) {
+    alert(
+      "Amal saqlanmadi: " +
+      (error.message || error.code)
+    );
+  } finally {
+    arxivTugma.disabled = false;
+  }
+});
+
+amalKatagi.appendChild(arxivTugma);
+qator.appendChild(amalKatagi);
+
+zakazlarJadvali.appendChild(qator);
   }
 },
 (error) => {
