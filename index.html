@@ -617,7 +617,6 @@ const yangiZakazBolimi =
 
 const boshSahifaMenyusi =
   document.getElementById("boshSahifaMenyusi");
-
 function bolimniOch(bolim) {
   boshSahifaMenyusi.hidden = bolim !== "bosh";
 
@@ -627,6 +626,7 @@ function bolimniOch(bolim) {
   yangiZakazBolimi.hidden = bolim !== "yangi";
   zakazlarBolimi.hidden = bolim !== "royxat";
 }
+
 boshSahifaMenyusi
   .querySelectorAll("[data-bolim]")
   .forEach((tugma) => {
