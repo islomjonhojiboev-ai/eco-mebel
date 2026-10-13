@@ -734,11 +734,11 @@ const zakazlar = snapshot.docs
   ? (arxivRejimi ? "Arxivdagi zakazlar: " : "Jami zakazlar: ") +
     zakazlar.length
   : (arxivRejimi ? "Arxiv bo‘sh." : "Hozircha zakazlar yo‘q.");
-
-  for (const zakaz of zakazlar) {v
-    const raqam = Number.isInteger(zakaz.zakazRaqami)
-      ? String(zakaz.zakazRaqami).padStart(4, "0")
-      : "Eski zakaz";
+for (const zakaz of zakazlar) {
+  const raqam = Number.isInteger(zakaz.zakazRaqami)
+    ? String(zakaz.zakazRaqami).padStart(4, "0")
+    : "Eski zakaz";
+  
 
     const sana = zakaz.yaratilganVaqt?.toDate
       ? zakaz.yaratilganVaqt.toDate().toLocaleString("uz-UZ")
