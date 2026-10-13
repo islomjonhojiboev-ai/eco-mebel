@@ -229,7 +229,10 @@
     📋 Zakazlar ro‘yxati
   </button>
 </nav>
-    <p id="foydalanuvchiEmail"></p><div class="statistika-karta">
+    <p id="foydalanuvchiEmail"></p>
+
+<div id="boshStatistika">
+  <div class="statistika-karta">
   <div class="statistika-nom">Bugungi zakazlar</div>
   <div id="statBugungiZakazlar" class="statistika-son">—</div>
 </div>
@@ -609,6 +612,10 @@ const boshSahifaMenyusi =
 
 function bolimniOch(bolim) {
   boshSahifaMenyusi.hidden = bolim !== "bosh";
+
+  document.getElementById("boshStatistika").hidden =
+    bolim !== "bosh";
+
   yangiZakazBolimi.hidden = bolim !== "yangi";
   zakazlarBolimi.hidden = bolim !== "royxat";
 }
