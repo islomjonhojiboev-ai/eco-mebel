@@ -271,17 +271,25 @@
 
 <div class="statistika-karta">
   <div class="statistika-nom">Kunlik pul farqi</div>
-  <div id="statKunlikPulFarqi">
-    Xarajatlar ulangach hisoblanadi
-  </div>
+<div id="statKunlikPulFarqi">
+  Xarajatlar ulangach hisoblanadi
 </div>
-  <p id="statistikaXabari">Ko‘rsatkichlar yuklanmoqda...</p>  <h3>Zakaz berish</h3><section id="yangiZakazBolimi" hidden>
+</div>
+
+<p id="statistikaXabari">
+  Ko‘rsatkichlar yuklanmoqda...
+</p>
+
+</div>
+
+<section id="yangiZakazBolimi" hidden>
   <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
   </button>
+
   <h2>Yangi zakaz</h2>
 
-<form id="zakazForm">
+  <form id="zakazForm">
   <input id="ism" type="text" placeholder="Ismingiz" required>
   <br><br>
 
@@ -613,12 +621,12 @@ const boshSahifaMenyusi =
 function bolimniOch(bolim) {
   boshSahifaMenyusi.hidden = bolim !== "bosh";
 
-  
+  document.getElementById("boshStatistika").hidden =
+    bolim !== "bosh";
 
   yangiZakazBolimi.hidden = bolim !== "yangi";
   zakazlarBolimi.hidden = bolim !== "royxat";
 }
-
 boshSahifaMenyusi
   .querySelectorAll("[data-bolim]")
   .forEach((tugma) => {
@@ -727,7 +735,7 @@ const zakazlar = snapshot.docs
     zakazlar.length
   : (arxivRejimi ? "Arxiv bo‘sh." : "Hozircha zakazlar yo‘q.");
 
-  for (const zakaz of zakazlar) {
+  for (const zakaz of zakazlar) {v
     const raqam = Number.isInteger(zakaz.zakazRaqami)
       ? String(zakaz.zakazRaqami).padStart(4, "0")
       : "Eski zakaz";
