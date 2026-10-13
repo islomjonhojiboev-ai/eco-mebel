@@ -263,7 +263,8 @@
     Xarajatlar ulangach hisoblanadi
   </div>
 </div>
-  <p id="statistikaXabari">Ko‘rsatkichlar yuklanmoqda...</p>  <h3>Zakaz berish</h3>
+  <p id="statistikaXabari">Ko‘rsatkichlar yuklanmoqda...</p>  <h3>Zakaz berish</h3><section id="yangiZakazBolimi">
+  <h2>Yangi zakaz</h2>
 
 <form id="zakazForm">
   <input id="ism" type="text" placeholder="Ismingiz" required>
@@ -306,11 +307,26 @@
   <button type="submit">Zakaz yuborish</button>
 </form>
 
-<p id="zakazXabar"></p>
-    <section id="zakazlarBolimi" hidden>
+  <p id="zakazXabar"></p>
+</section>
+
+<nav id="boshSahifaMenyusi" aria-label="Asosiy bo‘limlar">
+  <button type="button" data-bolim="yangi">
+    ➕ Yangi zakaz
+  </button>
+
+  <button type="button" data-bolim="royxat">
+    📋 Zakazlar ro‘yxati
+  </button>
+</nav>
+    <section id="zakazlarBolimi" hidden><button type="button" class="boshgaQaytish">
+    ← Bosh sahifa
+  </button>
   <h2>Zakazlar ro‘yxati</h2>
       <div style="margin-bottom: 12px;">
-  <input id="zakazQidiruv" type="search"
+  <input 
+    id="zakazQidiruv" 
+    type="search"
     placeholder="Zakaz raqami, ism yoki telefon">
 
   <select id="holatFiltri">
@@ -580,13 +596,40 @@ zakazlarRejimi.addEventListener("change", () => {
   }
 });
 
-let zakazlarniToxtatish = null;
+const yangiZakazBolimi =
+  document.getElementById("yangiZakazBolimi");
+
+const boshSahifaMenyusi =
+  document.getElementById("boshSahifaMenyusi");
+
+function bolimniOch(bolim) {
+  boshSahifaMenyusi.hidden = bolim !== "bosh";
+  yangiZakazBolimi.hidden = bolim !== "yangi";
+  zakazlarBolimi.hidden = bolim !== "royxat";
+}
+
+boshSahifaMenyusi
+  .querySelectorAll("[data-bolim]")
+  .forEach((tugma) => {
+    tugma.addEventListener("click", () => {
+      bolimniOch(tugma.dataset.bolim);
+    });
+  });
+
+document
+  .querySelectorAll(".boshgaQaytish")
+  .forEach((tugma) => {
+    tugma.addEventListener("click", () => {
+      bolimniOch("bosh");
+    });
+  });
+    let zakazlarniToxtatish = null;
 onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
  zakazlarJadvali.replaceChildren();zakazlarHolati.textContent = "";
 zakazlarBolimi.hidden = true;
 if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
 loginSection.style.display = "none"; asosiySahifa.style.display = "block"; foydalanuvchiEmail.textContent = "Kirdingiz: " + user.email;
-zakazlarBolimi.hidden = false; zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
+bolimniOch("bosh"); zakazlarHolati.textContent = "Zakazlar yuklanmoqda...";
 zakazlarniToxtatish = onSnapshot(
   collection(db, "zakazlar"),
   function zakazlarniChizish(snapshot) {
