@@ -4,6 +4,201 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Eco Mebel</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f2f5f9;
+      color: #1e293b;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    #asosiySahifa,
+    #loginSection {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      margin: 16px 0;
+      color: #164e63;
+      font-size: 28px;
+    }
+
+    h3 {
+      margin-top: 28px;
+      color: #164e63;
+    }
+
+    #foydalanuvchiEmail {
+      color: #526170;
+      overflow-wrap: anywhere;
+    }
+
+    .statistika-karta {
+      display: inline-block;
+      vertical-align: top;
+      width: calc(25% - 16px);
+      margin: 6px;
+      padding: 20px;
+      min-height: 150px;
+      border: 1px solid #dce5ef;
+      border-top: 4px solid #0891b2;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      overflow-wrap: anywhere;
+    }
+
+    .statistika-nom {
+      margin-bottom: 12px;
+      color: #526170;
+      font-size: 15px;
+    }
+
+    .statistika-son {
+      color: #164e63;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .statistika-izoh {
+      margin-top: 10px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    #statistikaXabari {
+      padding: 14px 16px;
+      border-left: 4px solid #0891b2;
+      border-radius: 8px;
+      background: #e8f5fa;
+      font-size: 14px;
+    }
+
+    #zakazForm {
+      max-width: 650px;
+      padding: 20px;
+      border: 1px solid #dce5ef;
+      border-radius: 14px;
+      background: #ffffff;
+    }
+
+    #zakazForm input,
+    #zakazForm textarea,
+    #zakazForm select,
+    #loginSection input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #1e293b;
+      font: inherit;
+    }
+
+    #zakazForm textarea {
+      min-height: 85px;
+      resize: vertical;
+    }
+
+    #zakazForm label {
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    #zakazForm button,
+    #loginBtn,
+    #logoutBtn {
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 8px;
+      background: #087f9c;
+      color: #ffffff;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #logoutBtn {
+      margin-top: 20px;
+      background: #475569;
+    }
+
+    #zakazForm button:disabled,
+    #loginBtn:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    button:focus-visible,
+    a:focus-visible {
+      outline: 3px solid #38bdf8;
+      outline-offset: 2px;
+    }
+
+    #zakazlarRejimi {
+      margin: 10px 0 16px;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    table {
+      background: #ffffff;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border: 1px solid #dce5ef;
+    }
+
+    th {
+      background: #e8f5fa;
+      color: #164e63;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 900px) {
+      .statistika-karta {
+        width: calc(50% - 16px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      h2 {
+        font-size: 23px;
+      }
+
+      .statistika-karta {
+        width: calc(100% - 12px);
+        min-height: auto;
+        padding: 16px;
+      }
+
+      #zakazForm {
+        padding: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
   <h1>Eco Mebel</h1>
