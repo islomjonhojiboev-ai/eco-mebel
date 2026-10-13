@@ -26,7 +26,43 @@
     <hr>
     <h2>Eco Mebel bosh sahifasi</h2>
     <p id="foydalanuvchiEmail"></p>
-    <p>Saytga xush kelibsiz!</p>
+    <p>Saytga xush kelibsiz!</p><div class="statistika-karta">
+  <div class="statistika-nom">Yangi zakazlar</div>
+  <div id="statYangiZakazlar" class="statistika-son">—</div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Ishlab chiqarishda</div>
+  <div id="statJarayondagiZakazlar" class="statistika-son">—</div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Tayyor zakazlar</div>
+  <div id="statTayyorZakazlar" class="statistika-son">—</div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Topshirilgan zakazlar</div>
+  <div id="statTopshirilganZakazlar" class="statistika-son">—</div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Bugungi tushum</div>
+  <div id="statBugungiTushum" class="statistika-son">—</div>
+  <div class="statistika-izoh">
+    Somoniy · to‘lov sanasi bo‘yicha
+  </div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Bugungi xarajat</div>
+  <div id="statBugungiXarajat">Ma’lumot ulanmagan</div>
+</div>
+
+<div class="statistika-karta">
+  <div class="statistika-nom">Kunlik pul farqi</div>
+  <div id="statKunlikPulFarqi">Xarajatlar ulangach hisoblanadi</div>
+</div>
     <h3>Zakaz berish</h3>
 
 <form id="zakazForm">
@@ -267,7 +303,8 @@ transaction.set(yangiZakazRef, {
   olcham: olcham,
   izoh: izoh,
   narx: narxHisob === null ? null : narxHisob / 100,
-  avans: avansHisob / 100,
+  avans: avansHisob / 100,boshlangichAvans: avansHisob / 100,
+boshlangichAvansVaqti: serverTimestamp(),
   qolganSumma: qolganSumma,
   pulBirligi: "TJS",
   topshirishSanasi: topshirishSanasi || null,
@@ -356,7 +393,65 @@ zakazlarniToxtatish = onSnapshot(
     zakazlarKorinishiniYangilash = () => {
       zakazlarniChizish(snapshot);
     }; if (auth.currentUser?.uid !== user.uid) return;
-  zakazlarJadvali.replaceChildren();
+  zakazlarJadvali.replaceChildren();const panelZakazlari = snapshot.docs.map((hujjat) => ({ ...hujjat.data(), id: hujjat.id }));
+const panelFaolZakazlari = panelZakazlari.filter( (zakaz) => zakaz.arxivlangan !== true );
+const panelBugunBoshlanishi = new Date(); panelBugunBoshlanishi.setHours(0, 0, 0, 0);
+const panelErtagaBoshlanishi = new Date( panelBugunBoshlanishi ); panelErtagaBoshlanishi.setDate( panelErtagaBoshlanishi.getDate() + 1 );
+const panelBugungiZakazlar = panelZakazlari.filter( (zakaz) => { const vaqt = zakaz.yaratilganVaqt?.toDate ? zakaz.yaratilganVaqt.toDate() : null;
+return vaqt !== null &&
+  vaqt >= panelBugunBoshlanishi &&
+  vaqt < panelErtagaBoshlanishi;
+} ).length;
+const panelHolatSoni = (holat) => { return panelFaolZakazlari.filter( (zakaz) => (zakaz.holat || "yangi") === holat ).length; };
+document.getElementById( "statBugungiZakazlar" ).textContent = String(panelBugungiZakazlar);
+document.getElementById( "statYangiZakazlar" ).textContent = String(panelHolatSoni("yangi"));
+document.getElementById( "statJarayondagiZakazlar" ).textContent = String(panelHolatSoni("ishlab_chiqarishda"));
+document.getElementById( "statTayyorZakazlar" ).textContent = String(panelHolatSoni("tayyor"));
+document.getElementById( "statTopshirilganZakazlar" ).textContent = String(panelHolatSoni("topshirildi"));
+document.getElementById( "statistikaXabari" ).textContent = "Holatlar bo‘yicha sonlar arxivdan tashqari zakazlarni " + "ko‘rsatadi. Bugungi zakazlar yaratilgan sana bo‘yicha, " + "arxivdagilar bilan birga sanaladi. " + "Tushum va xarajat hisobi hali ulanmagan.";let panelBugungiTushumTiyin = 0; let panelSanasiNomalumTiyin = 0;
+const panelSanaOlish = (qiymat) => { if (qiymat == null) return null;
+const sana = typeof qiymat.toDate === "function" ? qiymat.toDate() : new Date(qiymat);
+return Number.isFinite(sana.getTime()) ? sana : null; };
+const panelBugungiSana = (sana) => { return sana !== null && sana >= panelBugunBoshlanishi && sana < panelErtagaBoshlanishi; };
+for (const zakaz of panelZakazlari) { const tarix = Array.isArray(zakaz.tolovlarTarixi) ? zakaz.tolovlarTarixi : [];
+let tarixJamiTiyin = 0;
+for (const tolov of tarix) { const summa = Number(tolov.summa);
+if (!Number.isFinite(summa) || summa <= 0) continue;
+
+const tiyin = Math.round(summa * 100);
+const sana = panelSanaOlish(tolov.sana);
+
+tarixJamiTiyin += tiyin;
+
+if (panelBugungiSana(sana)) {
+  panelBugungiTushumTiyin += tiyin;
+} else if (sana === null) {
+  panelSanasiNomalumTiyin += tiyin;
+}
+}
+if (zakaz.boshlangichAvans != null) { const summa = Number(zakaz.boshlangichAvans);
+if (Number.isFinite(summa) && summa > 0) {
+  const tiyin = Math.round(summa * 100);
+  const sana = panelSanaOlish(
+    zakaz.boshlangichAvansVaqti
+  );
+
+  if (panelBugungiSana(sana)) {
+    panelBugungiTushumTiyin += tiyin;
+  } else if (sana === null) {
+    panelSanasiNomalumTiyin += tiyin;
+  }
+}
+} else { const jamiAvans = Number(zakaz.avans ?? 0);
+if (Number.isFinite(jamiAvans) && jamiAvans > 0) {
+  panelSanasiNomalumTiyin += Math.max(
+    0,
+    Math.round(jamiAvans * 100) - tarixJamiTiyin
+  );
+}
+} }
+document.getElementById( "statBugungiTushum" ).textContent = (panelBugungiTushumTiyin / 100).toLocaleString( "uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
+document.getElementById( "statistikaXabari" ).textContent = "Holatlar bo‘yicha sonlar arxivdan tashqari zakazlardan. " + "Bugungi tushum sanasi saqlangan to‘lovlardan, " + "arxivdagi zakazlar bilan birga hisoblanadi. " + "Sanasi noma’lum to‘lovlar bugungi tushumga qo‘shilmadi: " + (panelSanasiNomalumTiyin / 100).toFixed(2) + " somoniy. Xarajat hisobi hali ulanmagan.";
 
   const arxivRejimi = zakazlarRejimi.value === "arxiv";
 
