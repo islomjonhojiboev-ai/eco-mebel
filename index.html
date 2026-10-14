@@ -381,14 +381,28 @@
   placeholder="Ixtiyoriy"
   maxlength="1000"></textarea>
 <br><br>
-
 <button id="xarajatSaqlashBtn" type="submit" disabled>
-  Xarajatni saqlash — tayyorlanmoqda
-</button>
-      <button type="button" class="boshgaQaytish">
+      Xarajatni saqlash — tayyorlanmoqda
+    </button>
+  </form>
+
+  <p id="xarajatXabar" role="status"></p>
+
+  <h3>Xarajatlar ro‘yxati</h3>
+  <p id="xarajatlarHolati" role="status">
+    Ro‘yxat hali ulanmagan.
+  </p>
+
+  <div id="xarajatlarRoyxati"></div>
+</section>
+
+<section id="zakazlarBolimi" hidden>
+  <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
   </button>
+
   <h2>Zakazlar ro‘yxati</h2>
+
       <div style="margin-bottom: 12px;">
   <input 
     id="zakazQidiruv" 
