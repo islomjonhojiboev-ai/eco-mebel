@@ -334,7 +334,22 @@
   <p id="zakazXabar"></p>
 </section>
 
-<label for="xarajatTuri">Xarajat turi</label><br>
+<section id="xarajatlarBolimi" hidden>
+  <button type="button" class="boshgaQaytish">
+    ← Bosh sahifa
+  </button>
+
+  <h2>Xarajatlar</h2>
+
+  <form id="xarajatForm">
+    <label for="xarajatNomi">Xarajat nomi</label><br>
+    <input
+      id="xarajatNomi"
+      type="text"
+      placeholder="Masalan: taxta sotib olish"
+      maxlength="150"
+      required>
+    <br><br><label for="xarajatTuri">Xarajat turi</label><br>
 <select id="xarajatTuri" required>
   <option value="">Tanlang</option>
   <option value="material">Material</option>
@@ -370,7 +385,6 @@
 <button id="xarajatSaqlashBtn" type="submit" disabled>
   Xarajatni saqlash — tayyorlanmoqda
 </button>
-    <section id="zakazlarBolimi" hidden>
       <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
   </button>
