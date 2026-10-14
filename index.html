@@ -226,8 +226,9 @@
   </button>
 
   <button type="button" data-bolim="royxat">
-    📋 Zakazlar ro‘yxati
-  </button>
+    📋 Zakazlar ro‘yxati<button type="button" data-bolim="xarajatlar">
+  💸 Xarajatlar
+</button>
 </nav>
     <p id="foydalanuvchiEmail"></p>
 
@@ -333,7 +334,42 @@
   <p id="zakazXabar"></p>
 </section>
 
+<label for="xarajatTuri">Xarajat turi</label><br>
+<select id="xarajatTuri" required>
+  <option value="">Tanlang</option>
+  <option value="material">Material</option>
+  <option value="ish_haqi">Ish haqi</option>
+  <option value="transport">Transport</option>
+  <option value="ijara">Ijara</option>
+  <option value="kommunal">Kommunal</option>
+  <option value="boshqa">Boshqa</option>
+</select>
+<br><br>
 
+<label for="xarajatSumma">Summa (somoniy)</label><br>
+<input
+  id="xarajatSumma"
+  type="number"
+  min="0.01"
+  step="0.01"
+  placeholder="Masalan: 250"
+  required>
+<br><br>
+
+<label for="xarajatSanasi">Xarajat sanasi</label><br>
+<input id="xarajatSanasi" type="date" required>
+<br><br>
+
+<label for="xarajatIzoh">Qo‘shimcha izoh</label><br>
+<textarea
+  id="xarajatIzoh"
+  placeholder="Ixtiyoriy"
+  maxlength="1000"></textarea>
+<br><br>
+
+<button id="xarajatSaqlashBtn" type="submit" disabled>
+  Xarajatni saqlash — tayyorlanmoqda
+</button>
     <section id="zakazlarBolimi" hidden>
       <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
@@ -625,6 +661,9 @@ function bolimniOch(bolim) {
 
   yangiZakazBolimi.hidden = bolim !== "yangi";
   zakazlarBolimi.hidden = bolim !== "royxat";
+
+  document.getElementById("xarajatlarBolimi").hidden =
+    bolim !== "xarajatlar";
 }
 
 boshSahifaMenyusi
