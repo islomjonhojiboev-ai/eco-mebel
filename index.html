@@ -519,9 +519,23 @@ const summaMatni = document.getElementById("xarajatSumma").value.trim();
 const sana = document.getElementById("xarajatSanasi").value;
 const izoh = document.getElementById("xarajatIzoh").value.trim();
 const ruxsatTurlari = [ "material", "ish_haqi", "transport", "ijara", "kommunal", "boshqa" ];
-if (!nom  !ruxsatTurlari.includes(turi)  !sana) { xarajatXabar.textContent = "Xarajat nomi, turi va sanasini to‘ldiring."; return; }
+if (!nom  !ruxsatTurlari.includes(turi)  !sana) {
+  xarajatXabar.textContent =
+    "Xarajat nomi, turi va sanasini to‘ldiring.";
+  return;
+}
 const summa = Number(summaMatni); const summaHisob = Math.round(summa * 100);
-if ( summaMatni === ""  !Number.isFinite(summa)  summa <= 0  !Number.isSafeInteger(summaHisob)  summaHisob < 1 ) { xarajatXabar.textContent = "Summani 0 dan katta, to‘g‘ri son bilan kiriting."; return; }
+if (
+  summaMatni === "" ||
+  !Number.isFinite(summa) ||
+  summa <= 0 ||
+  !Number.isSafeInteger(summaHisob) ||
+  summaHisob < 1
+) {
+  xarajatXabar.textContent =
+    "Summani 0 dan katta, to‘g‘ri son bilan kiriting.";
+  return;
+}
 xarajatSaqlashBtn.disabled = true; xarajatXabar.style.color = "#164e63"; xarajatXabar.textContent = "Xarajat saqlanmoqda...";
 try { await addDoc(collection(db, "xarajatlar"), { nom: nom, turi: turi, summa: summaHisob / 100, summaHisob: summaHisob, sana: sana, izoh: izoh, pulBirligi: "TJS", userId: user.uid, yaratilganVaqt: serverTimestamp() });
 xarajatForm.reset();
