@@ -519,7 +519,7 @@ const summaMatni = document.getElementById("xarajatSumma").value.trim();
 const sana = document.getElementById("xarajatSanasi").value;
 const izoh = document.getElementById("xarajatIzoh").value.trim();
 const ruxsatTurlari = [ "material", "ish_haqi", "transport", "ijara", "kommunal", "boshqa" ];
-if (!nom  !ruxsatTurlari.includes(turi)  !sana) {
+if (!nom  !ruxsatTurlari.includes(turi) || !sana) {
   xarajatXabar.textContent =
     "Xarajat nomi, turi va sanasini to‘ldiring.";
   return;
