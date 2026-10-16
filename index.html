@@ -744,8 +744,16 @@ document
       bolimniOch("bosh");
     });
   });
-    let zakazlarniToxtatish = null;
-onAuthStateChanged(auth, (user) => { if (zakazlarniToxtatish) { zakazlarniToxtatish(); zakazlarniToxtatish = null; }
+  let zakazlarniToxtatish = null;
+
+onAuthStateChanged(auth, (user) => {
+  xarajatSaqlashBtn.disabled =
+    user?.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+
+  if (zakazlarniToxtatish) {
+    zakazlarniToxtatish();
+    zakazlarniToxtatish = null;
+  }
  zakazlarJadvali.replaceChildren();zakazlarHolati.textContent = "";
 zakazlarBolimi.hidden = true;
 if (!user) { loginSection.style.display = "block"; asosiySahifa.style.display = "none"; foydalanuvchiEmail.textContent = ""; zakazXabar.textContent = ""; zakazForm.reset(); return; }
