@@ -799,9 +799,20 @@ document
     tugma.addEventListener("click", () => {
       bolimniOch("bosh");
     });
-  });// Material hisobi const materialRoyxatiEl = document.getElementById("materialRoyxati"); const materialJamiEl = document.getElementById("materialJami"); const materialXabarEl = document.getElementById("materialXabar"); const materialFormEl = document.getElementById("materialForm"); const materialFormXabarEl = document.getElementById("materialFormXabar"); const materialSaqlashBtnEl = document.getElementById("materialSaqlashBtn"); const materialTozalashBtnEl = document.getElementById("materialTozalashBtn"); const materialZakazRaqamiEl = document.getElementById("materialZakazRaqami");
+  });
+
+// Material hisobi
+const materialRoyxatiEl =document.getElementById("materialRoyxati"); const materialJamiEl = document.getElementById("materialJami"); const materialXabarEl = document.getElementById("materialXabar"); const materialFormEl = document.getElementById("materialForm"); const materialFormXabarEl = document.getElementById("materialFormXabar"); const materialSaqlashBtnEl = document.getElementById("materialSaqlashBtn"); const materialTozalashBtnEl = document.getElementById("materialTozalashBtn"); const materialZakazRaqamiEl = document.getElementById("materialZakazRaqami");
 let materiallar = []; const materialMiqdorlari = new Map(); let materiallarniToxtatish = null;
-function materialTiyin(narx, miqdor) { const n = Number(narx); const m = Number(miqdor); if (!Number.isFinite(n)  !Number.isFinite(m)) return 0; if (n < 0  m <= 0) return 0; return Math.round(n * m * 100); }
+function materialTiyin(narx, miqdor) {
+  const n = Number(narx);
+  const m = Number(miqdor);
+  if (!Number.isFinite(n)) return 0;
+  if (!Number.isFinite(m)) return 0;
+  if (n < 0) return 0;
+  if (m <= 0) return 0;
+  return Math.round(n * m * 100);
+}
 function materialJaminiHisobla() { let jami = 0; for (const mat of materiallar) { jami += materialTiyin( mat.narx, materialMiqdorlari.get(mat.id) || 0 ); } materialJamiEl.textContent = "Jami: " + (jami / 100).toFixed(2) + " TJS"; return jami; }
 function materialKatak() { const c = document.createElement("td"); c.style.cssText = "padding:6px;border-bottom:1px solid #eee;"; return c; }
 function materialJadvaliniChiz() { materialRoyxatiEl.replaceChildren();
