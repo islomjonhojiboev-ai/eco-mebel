@@ -744,6 +744,30 @@ document
       bolimniOch("bosh");
     });
   });
+    // Kunlik pul farqi
+window.ecoBugungiTushumTiyin = null;
+window.ecoBugungiXarajatTiyin = null;
+
+window.kunlikPulFarqiniYangila = function () {
+  const el = document.getElementById("statKunlikPulFarqi");
+  if (!el) return;
+
+  const tushum = window.ecoBugungiTushumTiyin;
+  const xarajat = window.ecoBugungiXarajatTiyin;
+
+  if (tushum === null || xarajat === null) {
+    el.textContent = "Hisoblanmoqda...";
+    return;
+  }
+
+  const farq = tushum - xarajat;
+
+  el.textContent =
+    (farq >= 0 ? "+" : "−") +
+    (Math.abs(farq) / 100).toFixed(2) + " TJS";
+
+  el.style.color = farq >= 0 ? "green" : "red";
+};
 // Xarajatlar ro‘yxati
 const xarajatRoyxatElementi =
   document.getElementById("xarajatlarRoyxati");
@@ -791,6 +815,8 @@ if (statBugungiXarajat) {
   statBugungiXarajat.textContent =
     (bugungiXarajatHisob / 100).toFixed(2) + " TJS";
 }
+  window.ecoBugungiXarajatTiyin = bugungiXarajatHisob;
+window.kunlikPulFarqiniYangila();
   // Xarajat sanasi bo‘yicha yangilari tepada.
   xarajatlar.sort((a, b) =>
     String(b.sana || "").localeCompare(
@@ -946,7 +972,8 @@ if (Number.isFinite(jamiAvans) && jamiAvans > 0) {
   );
 }
 } }
-document.getElementById( "statBugungiTushum" ).textContent = (panelBugungiTushumTiyin / 100).toLocaleString( "uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
+document.getElementById( "statBugungiTushum" ).textContent = (panelBugungiTushumTiyin / 100).toLocaleString( "uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 } );window.ecoBugungiTushumTiyin = panelBugungiTushumTiyin;
+window.kunlikPulFarqiniYangila();
 document.getElementById( "statistikaXabari" ).textContent = "Holatlar bo‘yicha sonlar arxivdan tashqari zakazlardan. " + "Bugungi tushum sanasi saqlangan to‘lovlardan, " + "arxivdagi zakazlar bilan birga hisoblanadi. " + "Sanasi noma’lum to‘lovlar bugungi tushumga qo‘shilmadi: " + (panelSanasiNomalumTiyin / 100).toFixed(2) + " somoniy. Xarajat hisobi hali ulanmagan.";
 
   const arxivRejimi = zakazlarRejimi.value === "arxiv";
