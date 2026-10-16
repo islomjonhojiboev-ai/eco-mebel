@@ -903,9 +903,8 @@ materialRoyxatiEl.append(jadval); materialJaminiHisobla(); }onAuthStateChanged(a
   materialMiqdorlari.clear();
   materialJadvaliniChiz();
 
-  if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") {
-    return;
-  }
+  if (!user) return;
+if (user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") return;
 
   materiallarniToxtatish = onSnapshot(
     collection(db, "materiallar"),
@@ -939,11 +938,18 @@ materialFormEl.addEventListener("submit", async (event) => {
   const narx =
     Number(document.getElementById("materialNarxi").value);
 
-  if (!nom  !birlik  !Number.isFinite(narx) || narx < 0) {
-    materialFormXabarEl.textContent =
-      "Nomi, birligi va narxini to‘g‘ri kiriting.";
-    return;
-  }
+
+    let formaXato = false;
+if (!nom) formaXato = true;
+if (!birlik) formaXato = true;
+if (!Number.isFinite(narx)) formaXato = true;
+if (narx < 0) formaXato = true;
+
+if (formaXato) {
+  materialFormXabarEl.textContent =
+    "Nomi, birligi va narxini to‘g‘ri kiriting.";
+  return;
+}
 
   try {
     await addDoc(collection(db, "materiallar"), {
