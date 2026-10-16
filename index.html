@@ -749,7 +749,9 @@ document
       bolimniOch("bosh");
     });
   });
-    // Muddati yaqin zakazlar const muddatBloki = document.getElementById("muddatOgohlantirish"); const muddatHolati = document.getElementById("muddatHolati"); const muddatRoyxati = document.getElementById("muddatRoyxati");
+    // Muddati yaqin zakazlar
+const muddatBloki =
+  document.getElementById("muddatOgohlantirish"); const muddatHolati = document.getElementById("muddatHolati"); const muddatRoyxati = document.getElementById("muddatRoyxati");
 let muddatniToxtatish = null;
 function muddatSanaMatni(qiymat) { if (!qiymat) return null; if (typeof qiymat === "string") return qiymat.slice(0, 10);
 const d = typeof qiymat.toDate === "function" ? qiymat.toDate() : new Date(qiymat);
