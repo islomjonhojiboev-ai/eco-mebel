@@ -765,7 +765,32 @@ xarajatRoyxatiniToxtatish = onSnapshot( collection(db, "xarajatlar"),
     ...hujjat.data(),
     id: hujjat.id
   }));
+// Bugungi xarajat ko‘rsatkichi
+const hozir = new Date();
+const bugungiSana =
+  hozir.getFullYear() + "-" +
+  String(hozir.getMonth() + 1).padStart(2, "0") + "-" +
+  String(hozir.getDate()).padStart(2, "0");
 
+let bugungiXarajatHisob = 0;
+
+for (const x of xarajatlar) {
+  if (x.sana !== bugungiSana) continue;
+
+  const h = Number.isSafeInteger(x.summaHisob)
+    ? x.summaHisob
+    : Math.round(Number(x.summa || 0) * 100);
+
+  if (Number.isFinite(h)) bugungiXarajatHisob += h;
+}
+
+const statBugungiXarajat =
+  document.getElementById("statBugungiXarajat");
+
+if (statBugungiXarajat) {
+  statBugungiXarajat.textContent =
+    (bugungiXarajatHisob / 100).toFixed(2) + " TJS";
+}
   // Xarajat sanasi bo‘yicha yangilari tepada.
   xarajatlar.sort((a, b) =>
     String(b.sana || "").localeCompare(
