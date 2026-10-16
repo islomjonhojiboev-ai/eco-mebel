@@ -228,6 +228,8 @@
   <button type="button" data-bolim="royxat">
     📋 Zakazlar ro‘yxati<button type="button" data-bolim="xarajatlar">
   💸 Xarajatlar
+</button><button type="button" data-bolim="qarzdorlar">
+  📒 Qarzdorlar
 </button>
 </nav>
     <p id="foydalanuvchiEmail"></p>
@@ -400,7 +402,19 @@
 
   <div id="xarajatlarRoyxati"></div>
 </section>
+<section id="qarzdorlarBolimi" hidden>
+  <button type="button" class="boshgaQaytish">
+    ← Bosh sahifa
+  </button>
 
+  <h2>Qarzdorlar</h2>
+
+  <p id="qarzdorlarHolati" role="status">
+    Yuklanmoqda...
+  </p>
+
+  <div id="qarzdorlarRoyxati"></div>
+</section>
 <section id="zakazlarBolimi" hidden>
   <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
@@ -731,7 +745,8 @@ function bolimniOch(bolim) {
   zakazlarBolimi.hidden = bolim !== "royxat";
 
   document.getElementById("xarajatlarBolimi").hidden =
-    bolim !== "xarajatlar";
+    bolim !== "xarajatlar";document.getElementById("qarzdorlarBolimi").hidden =
+  bolim !== "qarzdorlar";
 }
 
 boshSahifaMenyusi
@@ -749,6 +764,113 @@ document
       bolimniOch("bosh");
     });
   });
+    // Qarzdorlar const qarzdorlarHolati = document.getElementById("qarzdorlarHolati"); const qarzdorlarRoyxati = document.getElementById("qarzdorlarRoyxati");
+let qarzdorlarniToxtatish = null;
+function tiyinga(qiymat) { const son = Number(qiymat); if (!Number.isFinite(son) || son <= 0) return 0; return Math.round(son * 100); }
+function zakazQarzi(zakaz) { if (zakaz.narx == null) return null;
+const narxTiyin = tiyinga(zakaz.narx); if (narxTiyin <= 0) return null;
+let tarixTiyin = 0; const tarix = Array.isArray(zakaz.tolovlarTarixi) ? zakaz.tolovlarTarixi : [];
+for (const tolov of tarix) { tarixTiyin += tiyinga(tolov?.summa); }
+let tolanganTiyin; if (zakaz.boshlangichAvans != null) { tolanganTiyin = tarixTiyin + tiyinga(zakaz.boshlangichAvans); } else { tolanganTiyin = Math.max(tarixTiyin, tiyinga(zakaz.avans)); }
+return { narxTiyin, tolanganTiyin, qarzTiyin: narxTiyin - tolanganTiyin }; }
+function somoniy(tiyin) { return (tiyin / 100).toFixed(2) + " TJS"; }
+onAuthStateChanged(auth, (user) => { if (qarzdorlarniToxtatish) { qarzdorlarniToxtatish(); qarzdorlarniToxtatish = null; }
+qarzdorlarRoyxati.replaceChildren(); qarzdorlarHolati.textContent = "";
+if (!user) { qarzdorlarHolati.textContent = "Qarzdorlarni ko‘rish uchun hisobga kiring."; return; }
+if (user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { qarzdorlarHolati.textContent = "Qarzdorlarni ko‘rish uchun admin ruxsati kerak."; return; }
+qarzdorlarHolati.textContent = "Yuklanmoqda...";
+qarzdorlarniToxtatish = onSnapshot( collection(db, "zakazlar"),
+(snapshot) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  const royxat = [];
+  let jamiQarzTiyin = 0;
+
+  for (const hujjat of snapshot.docs) {
+    const zakaz = hujjat.data();
+    if (zakaz.holat === "bekor") continue;
+
+    const hisob = zakazQarzi(zakaz);
+    if (!hisob || hisob.qarzTiyin <= 0) continue;
+
+    jamiQarzTiyin += hisob.qarzTiyin;
+    royxat.push({ ...zakaz, ...hisob });
+  }
+
+  royxat.sort((a, b) => b.qarzTiyin - a.qarzTiyin);
+
+  qarzdorlarRoyxati.replaceChildren();
+
+  if (royxat.length === 0) {
+    qarzdorlarHolati.textContent = "Qarzdorlar yo‘q.";
+    return;
+  }
+
+  qarzdorlarHolati.textContent =
+    "Qarzdorlar: " + royxat.length +
+    " ta | Jami qarz: " + somoniy(jamiQarzTiyin);
+
+  for (const z of royxat) {
+    const karta = document.createElement("div");
+    karta.style.cssText =
+      "border:1px solid #fca5a5;" +
+      "border-left:5px solid #dc2626;" +
+      "border-radius:8px;" +
+      "padding:12px;" +
+      "margin-bottom:10px;" +
+      "background:#fff;";
+
+    const raqam = Number.isInteger(z.zakazRaqami)
+      ? "№" + String(z.zakazRaqami).padStart(4, "0")
+      : "Eski zakaz";
+
+    const sarlavha = document.createElement("h4");
+    sarlavha.style.margin = "0 0 6px";
+    sarlavha.textContent =
+      raqam + " — " + (z.ism || "Nomsiz");
+
+    const aloqa = document.createElement("p");
+    aloqa.style.margin = "0 0 6px";
+    if (z.telefon) {
+      const tel = document.createElement("a");
+      tel.href = "tel:" + String(z.telefon).replace(/\s+/g, "");
+      tel.textContent = z.telefon;
+      aloqa.append("Telefon: ", tel);
+    } else {
+      aloqa.textContent = "Telefon: —";
+    }
+
+    const mebel = document.createElement("p");
+    mebel.style.margin = "0 0 6px";
+    mebel.textContent =
+      "Mebel: " + (z.mebel || "—") +
+      " | Holat: " + (z.holat || "—");
+
+    const pul = document.createElement("p");
+    pul.style.margin = "0";
+    pul.textContent =
+      "Narx: " + somoniy(z.narxTiyin) +
+      " | To‘langan: " + somoniy(z.tolanganTiyin);
+
+    const qarz = document.createElement("p");
+    qarz.style.cssText =
+      "margin:6px 0 0;font-weight:bold;color:#dc2626;";
+    qarz.textContent = "Qarz: " + somoniy(z.qarzTiyin);
+
+    karta.append(sarlavha, aloqa, mebel, pul, qarz);
+    qarzdorlarRoyxati.append(karta);
+  }
+},
+
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  qarzdorlarRoyxati.replaceChildren();
+  qarzdorlarHolati.textContent =
+    "Qarzdorlar yuklanmadi. Xatolik: " +
+    (error.code || error.message);
+}
+); });
     // Muddati yaqin zakazlar
 const muddatBloki =
   document.getElementById("muddatOgohlantirish"); const muddatHolati = document.getElementById("muddatHolati"); const muddatRoyxati = document.getElementById("muddatRoyxati");
