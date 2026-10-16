@@ -744,7 +744,104 @@ document
       bolimniOch("bosh");
     });
   });
-  let zakazlarniToxtatish = null;
+// Xarajatlar ro‘yxati const xarajatRoyxatElementi = document.getElementById("xarajatlarRoyxati");
+const xarajatHolatElementi = document.getElementById("xarajatlarHolati");
+let xarajatRoyxatiniToxtatish = null;
+const xarajatTuriNomlari = { material: "Material", ish_haqi: "Ish haqi", transport: "Transport", ijara: "Ijara", kommunal: "Kommunal", boshqa: "Boshqa" };
+onAuthStateChanged(auth, (user) => { if (xarajatRoyxatiniToxtatish) { xarajatRoyxatiniToxtatish(); xarajatRoyxatiniToxtatish = null; }
+xarajatRoyxatElementi.replaceChildren(); xarajatHolatElementi.textContent = "";
+if (!user) { xarajatHolatElementi.textContent = "Xarajatlarni ko‘rish uchun hisobga kiring."; return; }
+if (user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { xarajatHolatElementi.textContent = "Xarajatlarni ko‘rish uchun admin ruxsati kerak."; return; }
+xarajatHolatElementi.textContent = "Xarajatlar yuklanmoqda...";
+xarajatRoyxatiniToxtatish = onSnapshot( collection(db, "xarajatlar"),
+(snapshot) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  xarajatRoyxatElementi.replaceChildren();
+
+  const xarajatlar = snapshot.docs.map((hujjat) => ({
+    ...hujjat.data(),
+    id: hujjat.id
+  }));
+
+  // Xarajat sanasi bo‘yicha yangilari tepada.
+  xarajatlar.sort((a, b) =>
+    String(b.sana || "").localeCompare(
+      String(a.sana || "")
+    )
+  );
+
+  if (xarajatlar.length === 0) {
+    xarajatHolatElementi.textContent =
+      "Hali xarajat kiritilmagan.";
+    return;
+  }
+
+  let jamiHisob = 0;
+
+  for (const xarajat of xarajatlar) {
+    const hisob = Number.isSafeInteger(
+      xarajat.summaHisob
+    )
+      ? xarajat.summaHisob
+      : Math.round(Number(xarajat.summa || 0) * 100);
+
+    if (Number.isFinite(hisob)) {
+      jamiHisob += hisob;
+    }
+
+    const karta = document.createElement("div");
+    karta.style.cssText =
+      "border:1px solid #ccc;" +
+      "border-radius:8px;" +
+      "padding:12px;" +
+      "margin-bottom:10px;";
+
+    const sarlavha = document.createElement("h4");
+    sarlavha.textContent =
+      xarajat.nom || "Nomsiz xarajat";
+
+    const tafsilot = document.createElement("p");
+    const tur =
+      xarajatTuriNomlari[xarajat.turi] ||
+      xarajat.turi ||
+      "—";
+
+    const summa = Number.isFinite(hisob)
+      ? (hisob / 100).toFixed(2)
+      : "—";
+
+    tafsilot.textContent =
+      "Sana: " + (xarajat.sana || "—") +
+      " | Turi: " + tur +
+      " | Summa: " + summa + " TJS";
+
+    karta.append(sarlavha, tafsilot);
+
+    if (xarajat.izoh) {
+      const izoh = document.createElement("p");
+      izoh.textContent = "Izoh: " + xarajat.izoh;
+      karta.append(izoh);
+    }
+
+    xarajatRoyxatElementi.append(karta);
+  }
+
+  xarajatHolatElementi.textContent =
+    "Xarajatlar: " + xarajatlar.length +
+    " ta | Jami: " +
+    (jamiHisob / 100).toFixed(2) + " TJS";
+},
+
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  xarajatRoyxatElementi.replaceChildren();
+  xarajatHolatElementi.textContent =
+    "Xarajatlar yuklanmadi. Xatolik: " +
+    (error.code || error.message);
+}
+); });  let zakazlarniToxtatish = null;
 
 onAuthStateChanged(auth, (user) => {
   xarajatSaqlashBtn.disabled =
