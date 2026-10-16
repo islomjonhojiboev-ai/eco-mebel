@@ -224,13 +224,22 @@
   <button type="button" data-bolim="yangi">
     ➕ Yangi zakaz
   </button>
+<button type="button" data-bolim="royxat">
+  📋 Zakazlar ro‘yxati
+</button>
 
-  <button type="button" data-bolim="royxat">
-    📋 Zakazlar ro‘yxati<button type="button" data-bolim="xarajatlar">
+<button type="button" data-bolim="xarajatlar">
   💸 Xarajatlar
-</button><button type="button" data-bolim="qarzdorlar">
+</button>
+
+<button type="button" data-bolim="qarzdorlar">
   📒 Qarzdorlar
 </button>
+
+<button type="button" data-bolim="material">
+  🧮 Material hisobi
+</button>
+  
 </nav>
     <p id="foydalanuvchiEmail"></p>
 
@@ -402,7 +411,30 @@
 
   <div id="xarajatlarRoyxati"></div>
 </section>
-<section id="qarzdorlarBolimi" hidden>
+<label for="materialZakazRaqami">Zakaz raqami</label><br> <input
+id="materialZakazRaqami"
+type="number"
+min="1"
+step="1"
+placeholder="Masalan: 12"> <br><br>
+<input
+  id="materialBirligi"
+  type="text"
+  placeholder="Birligi (list, metr, dona)"
+  maxlength="20"
+  required>
+<br><br>
+
+<input
+  id="materialNarxi"
+  type="number"
+  min="0"
+  step="0.01"
+  placeholder="Narxi (somoniy)"
+  required>
+<br><br>
+
+<button type="submit">Materialni saqlash</button><section id="qarzdorlarBolimi" hidden>
   <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
   </button>
@@ -746,7 +778,8 @@ function bolimniOch(bolim) {
 
   document.getElementById("xarajatlarBolimi").hidden =
     bolim !== "xarajatlar";document.getElementById("qarzdorlarBolimi").hidden =
-  bolim !== "qarzdorlar";
+  bolim !== "qarzdorlar";document.getElementById("materialBolimi").hidden =
+  bolim !== "material";
 }
 
 boshSahifaMenyusi
