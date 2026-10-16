@@ -280,7 +280,12 @@
 <p id="statistikaXabari">
   Ko‘rsatkichlar yuklanmoqda...
 </p>
-
+<div id="muddatOgohlantirish" hidden
+  style="margin-top:16px;padding:12px;border-radius:8px;background:#fff7ed;border:1px solid #fdba74;">
+  <h3 style="margin-top:0;">⏰ Muddati yaqin zakazlar</h3>
+  <p id="muddatHolati"></p>
+  <div id="muddatRoyxati"></div>
+</div>
 </div>
 
 <section id="yangiZakazBolimi" hidden>
@@ -744,7 +749,119 @@ document
       bolimniOch("bosh");
     });
   });
-    // Kunlik pul farqi
+    // Muddati yaqin zakazlar const muddatBloki = document.getElementById("muddatOgohlantirish"); const muddatHolati = document.getElementById("muddatHolati"); const muddatRoyxati = document.getElementById("muddatRoyxati");
+let muddatniToxtatish = null;
+function muddatSanaMatni(qiymat) { if (!qiymat) return null; if (typeof qiymat === "string") return qiymat.slice(0, 10);
+const d = typeof qiymat.toDate === "function" ? qiymat.toDate() : new Date(qiymat);
+if (!Number.isFinite(d.getTime())) return null;
+return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+onAuthStateChanged(auth, (user) => { if (muddatniToxtatish) { muddatniToxtatish(); muddatniToxtatish = null; }
+muddatRoyxati.replaceChildren(); muddatHolati.textContent = ""; muddatBloki.hidden = true;
+if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { return; }
+muddatniToxtatish = onSnapshot( collection(db, "zakazlar"),
+(snapshot) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  const bugun = new Date();
+  bugun.setHours(0, 0, 0, 0);
+
+  const OGOHLANTIRISH_KUNI = 3;
+  const royxat = [];
+
+  for (const hujjat of snapshot.docs) {
+    const zakaz = hujjat.data();
+
+    if (zakaz.holat === "topshirilgan") continue;
+    if (zakaz.holat === "bekor") continue;
+    if (zakaz.arxiv === true) continue;
+    if (zakaz.arxivlangan === true) continue;
+
+    const sanaMatn = muddatSanaMatni(
+      zakaz.topshirishSanasi
+    );
+    if (!sanaMatn) continue;
+
+    const [y, m, d] = sanaMatn.split("-").map(Number);
+    const muddat = new Date(y, m - 1, d);
+    if (!Number.isFinite(muddat.getTime())) continue;
+
+    const qolganKun = Math.round(
+      (muddat - bugun) / 86400000
+    );
+
+    if (qolganKun > OGOHLANTIRISH_KUNI) continue;
+
+    royxat.push({ ...zakaz, qolganKun, sanaMatn });
+  }
+
+  royxat.sort((a, b) => a.qolganKun - b.qolganKun);
+
+  muddatRoyxati.replaceChildren();
+
+  if (royxat.length === 0) {
+    muddatBloki.hidden = true;
+    return;
+  }
+
+  muddatBloki.hidden = false;
+
+  const otgan = royxat.filter(
+    (z) => z.qolganKun < 0
+  ).length;
+
+  muddatHolati.textContent =
+    "Jami: " + royxat.length + " ta" +
+    (otgan ? " | Muddati o‘tgan: " + otgan + " ta" : "");
+
+  for (const z of royxat) {
+    const qator = document.createElement("div");
+    qator.style.cssText =
+      "padding:8px 0;border-top:1px solid #fed7aa;";
+
+    const raqam = Number.isInteger(z.zakazRaqami)
+      ? "№" + String(z.zakazRaqami).padStart(4, "0")
+      : "";
+
+    let holatMatn;
+    let rang;
+
+    if (z.qolganKun < 0) {
+      holatMatn = Math.abs(z.qolganKun) + " kun kechikdi";
+      rang = "#b91c1c";
+    } else if (z.qolganKun === 0) {
+      holatMatn = "Bugun topshirish";
+      rang = "#c2410c";
+    } else {
+      holatMatn = z.qolganKun + " kun qoldi";
+      rang = "#a16207";
+    }
+
+    const sarlavha = document.createElement("strong");
+    sarlavha.textContent = [raqam, z.ism || "", z.mebel || ""]
+      .filter(Boolean)
+      .join(" — ");
+
+    const tafsilot = document.createElement("div");
+    tafsilot.textContent =
+      "Muddat: " + z.sanaMatn +
+      " | " + holatMatn +
+      (z.telefon ? " | " + z.telefon : "");
+    tafsilot.style.color = rang;
+
+    qator.append(sarlavha, tafsilot);
+    muddatRoyxati.append(qator);
+  }
+},
+
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  muddatBloki.hidden = false;
+  muddatHolati.textContent =
+    "Muddatlar yuklanmadi. Xatolik: " +
+    (error.code || error.message);
+}
+); });// Kunlik pul farqi
 window.ecoBugungiTushumTiyin = null;
 window.ecoBugungiXarajatTiyin = null;
 
