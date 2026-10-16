@@ -539,16 +539,7 @@
 
   <script type="module">
     
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-  doc,
-  runTransaction,
-onSnapshot,
-updateDoc
-} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, doc, runTransaction, onSnapshot, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
@@ -808,7 +799,163 @@ document
     tugma.addEventListener("click", () => {
       bolimniOch("bosh");
     });
-  });
+  });// Material hisobi const materialRoyxatiEl = document.getElementById("materialRoyxati"); const materialJamiEl = document.getElementById("materialJami"); const materialXabarEl = document.getElementById("materialXabar"); const materialFormEl = document.getElementById("materialForm"); const materialFormXabarEl = document.getElementById("materialFormXabar"); const materialSaqlashBtnEl = document.getElementById("materialSaqlashBtn"); const materialTozalashBtnEl = document.getElementById("materialTozalashBtn"); const materialZakazRaqamiEl = document.getElementById("materialZakazRaqami");
+let materiallar = []; const materialMiqdorlari = new Map(); let materiallarniToxtatish = null;
+function materialTiyin(narx, miqdor) { const n = Number(narx); const m = Number(miqdor); if (!Number.isFinite(n)  !Number.isFinite(m)) return 0; if (n < 0  m <= 0) return 0; return Math.round(n * m * 100); }
+function materialJaminiHisobla() { let jami = 0; for (const mat of materiallar) { jami += materialTiyin( mat.narx, materialMiqdorlari.get(mat.id) || 0 ); } materialJamiEl.textContent = "Jami: " + (jami / 100).toFixed(2) + " TJS"; return jami; }
+function materialKatak() { const c = document.createElement("td"); c.style.cssText = "padding:6px;border-bottom:1px solid #eee;"; return c; }
+function materialJadvaliniChiz() { materialRoyxatiEl.replaceChildren();
+if (materiallar.length === 0) { materialRoyxatiEl.textContent = "Hali material qo‘shilmagan. Pastdagi formadan qo‘shing."; materialJaminiHisobla(); return; }
+const jadval = document.createElement("table"); jadval.style.cssText = "width:100%;border-collapse:collapse;";
+const bosh = document.createElement("tr"); for (const t of ["Material", "Narxi", "Soni", "Summa", ""]) { const th = document.createElement("th"); th.textContent = t; th.style.cssText = "text-align:left;padding:6px;border-bottom:2px solid #ccc;"; bosh.append(th); } jadval.append(bosh);
+for (const mat of materiallar) { const tr = document.createElement("tr");
+const nomTd = materialKatak();
+nomTd.textContent = mat.nom + " (" + mat.birlik + ")";
+
+const narxTd = materialKatak();
+const narxInput = document.createElement("input");
+narxInput.type = "number";
+narxInput.min = "0";
+narxInput.step = "0.01";
+narxInput.value = mat.narx;
+narxInput.style.width = "90px";
+narxInput.addEventListener("change", async () => {
+  const yangi = Number(narxInput.value);
+  if (!Number.isFinite(yangi) || yangi < 0) {
+    narxInput.value = mat.narx;
+    return;
+  }
+  try {
+    await updateDoc(doc(db, "materiallar", mat.id), {
+      narx: yangi,
+      yangilanganVaqt: serverTimestamp()
+    });
+  } catch (e) {
+    materialXabarEl.style.color = "red";
+    materialXabarEl.textContent =
+      "Narx saqlanmadi: " + (e.code || e.message);
+  }
+});
+narxTd.append(narxInput);
+
+const soniTd = materialKatak();
+const summaTd = materialKatak();
+const soniInput = document.createElement("input");
+soniInput.type = "number";
+soniInput.min = "0";
+soniInput.step = "0.01";
+soniInput.placeholder = "0";
+soniInput.value = materialMiqdorlari.get(mat.id) || "";
+soniInput.style.width = "80px";
+
+const yangila = () => {
+  const m = Number(soniInput.value);
+  materialMiqdorlari.set(
+    mat.id, Number.isFinite(m) && m > 0 ? m : 0
+  );
+  summaTd.textContent = (
+    materialTiyin(mat.narx, materialMiqdorlari.get(mat.id)) / 100
+  ).toFixed(2);
+  materialJaminiHisobla();
+};
+soniInput.addEventListener("input", yangila);
+soniTd.append(soniInput);
+yangila();
+
+const ochirTd = materialKatak();
+const ochirBtn = document.createElement("button");
+ochirBtn.type = "button";
+ochirBtn.textContent = "✕";
+ochirBtn.addEventListener("click", async () => {
+  const savol = "“" + mat.nom + "” materialini o‘chirasizmi?";
+  if (!confirm(savol)) return;
+  try {
+    await deleteDoc(doc(db, "materiallar", mat.id));
+  } catch (e) {
+    materialXabarEl.style.color = "red";
+    materialXabarEl.textContent =
+      "O‘chirilmadi: " + (e.code || e.message);
+  }
+});
+ochirTd.append(ochirBtn);
+
+tr.append(nomTd, narxTd, soniTd, summaTd, ochirTd);
+jadval.append(tr);
+}
+materialRoyxatiEl.append(jadval); materialJaminiHisobla(); }onAuthStateChanged(auth, (user) => {
+  if (materiallarniToxtatish) {
+    materiallarniToxtatish();
+    materiallarniToxtatish = null;
+  }
+
+  materiallar = [];
+  materialMiqdorlari.clear();
+  materialJadvaliniChiz();
+
+  if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") {
+    return;
+  }
+
+  materiallarniToxtatish = onSnapshot(
+    collection(db, "materiallar"),
+    (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid) return;
+      materiallar = snapshot.docs.map((h) => ({
+        ...h.data(),
+        id: h.id
+      }));
+      materiallar.sort((a, b) =>
+        String(a.nom).localeCompare(String(b.nom))
+      );
+      materialJadvaliniChiz();
+    },
+    (error) => {
+      materialRoyxatiEl.textContent =
+        "Materiallar yuklanmadi: " + (error.code || error.message);
+    }
+  );
+});
+
+materialFormEl.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  materialFormXabarEl.style.color = "red";
+  materialFormXabarEl.textContent = "";
+
+  const nom =
+    document.getElementById("materialNomi").value.trim();
+  const birlik =
+    document.getElementById("materialBirligi").value.trim();
+  const narx =
+    Number(document.getElementById("materialNarxi").value);
+
+  if (!nom  !birlik  !Number.isFinite(narx) || narx < 0) {
+    materialFormXabarEl.textContent =
+      "Nomi, birligi va narxini to‘g‘ri kiriting.";
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "materiallar"), {
+      nom: nom,
+      birlik: birlik,
+      narx: narx,
+      yaratilganVaqt: serverTimestamp()
+    });
+    materialFormEl.reset();
+    materialFormXabarEl.style.color = "green";
+    materialFormXabarEl.textContent = "Material qo‘shildi.";
+  } catch (e) {
+    materialFormXabarEl.textContent =
+      "Saqlanmadi: " + (e.code || e.message);
+  }
+});
+
+materialTozalashBtnEl.addEventListener("click", () => {
+  materialMiqdorlari.clear();
+  materialZakazRaqamiEl.value = "";
+  materialXabarEl.textContent = "";
+  materialJadvaliniChiz();
+});
     // Qarzdorlar const qarzdorlarHolati = document.getElementById("qarzdorlarHolati"); const qarzdorlarRoyxati = document.getElementById("qarzdorlarRoyxati");
 let qarzdorlarniToxtatish = null;
 function tiyinga(qiymat) { const son = Number(qiymat); if (!Number.isFinite(son) || son <= 0) return 0; return Math.round(son * 100); }
