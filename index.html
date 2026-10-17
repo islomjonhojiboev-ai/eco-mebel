@@ -972,7 +972,99 @@ materialTozalashBtnEl.addEventListener("click", () => {
   materialZakazRaqamiEl.value = "";
   materialXabarEl.textContent = "";
   materialJadvaliniChiz();
+});materialSaqlashBtnEl.addEventListener("click", async () => { if (materialSaqlashBtnEl.disabled) return;
+materialXabarEl.style.color = "red"; materialXabarEl.textContent = "";
+const user = auth.currentUser;
+if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { materialXabarEl.textContent = "Admin hisobiga kiring."; return; }
+const raqam = Number(materialZakazRaqamiEl.value);
+if (!Number.isSafeInteger(raqam) || raqam < 1) { materialXabarEl.textContent = "Zakaz raqamini to‘g‘ri kiriting."; return; }
+const qatorlar = []; let jamiHisob = 0;
+for (const mat of materiallar) { const miqdor = Number(materialMiqdorlari.get(mat.id) || 0);
+if (miqdor === 0) continue;
+
+const narx = Number(mat.narx);
+const summaHisob = Math.round(narx * miqdor * 100);
+
+if (
+  !Number.isFinite(miqdor) ||
+  miqdor < 0 ||
+  !Number.isFinite(narx) ||
+  narx < 0 ||
+  !Number.isSafeInteger(summaHisob)
+) {
+  materialXabarEl.textContent =
+    "Material narxi yoki miqdorini tekshiring.";
+  return;
+}
+
+jamiHisob += summaHisob;
+
+qatorlar.push({
+  materialId: mat.id,
+  nom: mat.nom,
+  birlik: mat.birlik,
+  narx: narx,
+  miqdor: miqdor,
+  summaHisob: summaHisob
 });
+}
+if (qatorlar.length === 0) { materialXabarEl.textContent = "Kamida bitta materialning sonini kiriting."; return; }
+if (!Number.isSafeInteger(jamiHisob)) { materialXabarEl.textContent = "Jami summa juda katta."; return; }
+materialSaqlashBtnEl.disabled = true; materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz tekshirilmoqda...";
+try { const fs = await import( "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js" );
+const natija = await fs.getDocs(
+  fs.query(
+    fs.collection(db, "zakazlar"),
+    fs.where("zakazRaqami", "==", raqam),
+    fs.limit(2)
+  )
+);
+
+if (natija.empty) {
+  throw new Error("Bu raqamli zakaz topilmadi.");
+}
+
+if (natija.size !== 1) {
+  throw new Error("Bu raqam bilan bir nechta zakaz topildi.");
+}
+
+if (auth.currentUser?.uid !== user.uid) {
+  throw new Error("Hisob o‘zgardi. Qayta kiring.");
+}
+
+const zakazHujjati = natija.docs[0];
+const zakaz = zakazHujjati.data();
+
+const tasdiq = window.confirm(
+  "Zakaz №" + String(raqam).padStart(4, "0") +
+  "\nMijoz: " + (zakaz.ism || "—") +
+  "\nMaterial jami: " + (jamiHisob / 100).toFixed(2) +
+  " TJS\n\nMaterial hisobini yozasizmi?" +
+  "\nAvvalgi materialHisobi bo‘lsa, yangisiga almashtiriladi."
+);
+
+if (!tasdiq) {
+  materialXabarEl.textContent = "Saqlash bekor qilindi.";
+  return;
+}
+
+await fs.updateDoc(zakazHujjati.ref, {
+  materialHisobi: {
+    qatorlar: qatorlar,
+    jamiHisob: jamiHisob,
+    pulBirligi: "TJS",
+    userId: user.uid,
+    yangilanganVaqt: fs.serverTimestamp()
+  }
+});
+
+materialXabarEl.style.color = "green";
+materialXabarEl.textContent =
+  "Material hisobi zakaz №" +
+  String(raqam).padStart(4, "0") +
+  " ga yozildi. Jami: " +
+  (jamiHisob / 100).toFixed(2) + " TJS";
+} catch (error) { materialXabarEl.style.color = "red"; materialXabarEl.textContent = "Saqlanmadi: " + (error.code || error.message); } finally { materialSaqlashBtnEl.disabled = false; } });
     // Qarzdorlar const qarzdorlarHolati = document.getElementById("qarzdorlarHolati"); const qarzdorlarRoyxati = document.getElementById("qarzdorlarRoyxati");
 let qarzdorlarniToxtatish = null;
 function tiyinga(qiymat) { const son = Number(qiymat); if (!Number.isFinite(son) || son <= 0) return 0; return Math.round(son * 100); }
