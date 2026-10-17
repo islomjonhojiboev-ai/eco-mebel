@@ -1065,7 +1065,12 @@ materialXabarEl.textContent =
   " ga yozildi. Jami: " +
   (jamiHisob / 100).toFixed(2) + " TJS";
 } catch (error) { materialXabarEl.style.color = "red"; materialXabarEl.textContent = "Saqlanmadi: " + (error.code || error.message); } finally { materialSaqlashBtnEl.disabled = false; } });
-    // Qarzdorlar const qarzdorlarHolati = document.getElementById("qarzdorlarHolati"); const qarzdorlarRoyxati = document.getElementById("qarzdorlarRoyxati");
+    // Qarzdorlar
+const qarzdorlarHolati =
+  document.getElementById("qarzdorlarHolati");
+
+const qarzdorlarRoyxati =
+  document.getElementById("qarzdorlarRoyxati");
 let qarzdorlarniToxtatish = null;
 function tiyinga(qiymat) { const son = Number(qiymat); if (!Number.isFinite(son) || son <= 0) return 0; return Math.round(son * 100); }
 function zakazQarzi(zakaz) { if (zakaz.narx == null) return null;
@@ -1833,9 +1838,17 @@ arxivTugma.addEventListener("click", async () => {
 });
 
 amalKatagi.appendChild(arxivTugma);
-qator.appendChild(amalKatagi);
-
-zakazlarJadvali.appendChild(qator);
+const materialTugma = document.createElement("button"); materialTugma.type = "button"; materialTugma.textContent = "Materiallar"; materialTugma.title = "Shu zakaz uchun material hisobini tayyorlash"; materialTugma.style.cssText = "border:0;background:transparent;" + "color:#15803d;text-decoration:underline;" + "cursor:pointer;font:inherit;padding:8px;";
+materialTugma.addEventListener("click", () => { if (!Number.isSafeInteger(zakaz.zakazRaqami) || zakaz.zakazRaqami < 1) { alert("Bu zakazning raqami yo‘q yoki noto‘g‘ri."); return; }
+if (materialMiqdorlari.size > 0) { const tasdiq = window.confirm( "Materiallar bo‘limida kiritilgan miqdorlar bor.\n" + "Ularni tozalab, zakaz №" + raqam + " uchun yangi hisob boshlaysizmi?\n\n" + "Avval saqlangan hisob o‘chirilmaydi." );
+if (!tasdiq) return;
+}
+materialMiqdorlari.clear(); materialZakazRaqamiEl.value = String(zakaz.zakazRaqami); materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz №" + raqam + " — " + (zakaz.ism || "Ism kiritilmagan") + ". Material miqdorlarini kiriting." + (zakaz.materialHisobi ? " Diqqat: saqlashda avvalgi material hisobi almashtiriladi." : "");
+materialJadvaliniChiz();
+materialZakazRaqamiEl.scrollIntoView({ behavior: "smooth", block: "center" }); materialZakazRaqamiEl.focus({ preventScroll: true }); });
+amalKatagi.appendChild(materialTugma);
+// PDF tugmasi keyin shu yerga qo‘shiladi.
+qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
   }
 },
 (error) => {
