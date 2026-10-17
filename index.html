@@ -1424,7 +1424,7 @@ if (Number.isFinite(jamiAvans) && jamiAvans > 0) {
 } }
 document.getElementById( "statBugungiTushum" ).textContent = (panelBugungiTushumTiyin / 100).toLocaleString( "uz-UZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 } );window.ecoBugungiTushumTiyin = panelBugungiTushumTiyin;
 window.kunlikPulFarqiniYangila();
-document.getElementById( "statistikaXabari" ).textContent = "Holatlar bo‘yicha sonlar arxivdan tashqari zakazlardan. " + "Bugungi tushum sanasi saqlangan to‘lovlardan, " + "arxivdagi zakazlar bilan birga hisoblanadi. " + "Sanasi noma’lum to‘lovlar bugungi tushumga qo‘shilmadi: " + (panelSanasiNomalumTiyin / 100).toFixed(2) + " somoniy. Xarajat hisobi hali ulanmagan.";
+document.getElementById( "statistikaXabari" ).textContent = "Holatlar bo‘yicha sonlar arxivdan tashqari zakazlardan. " + "Bugungi tushum sanasi saqlangan to‘lovlardan, " + "arxivdagi zakazlar bilan birga hisoblanadi. " + "Sanasi noma’lum to‘lovlar bugungi tushumga qo‘shilmadi: " + (panelSanasiNomalumTiyin / 100).toFixed(2)" somoniy. Bugungi xarajat xarajat sanasi bo‘yicha hisoblanadi.";
 
   const arxivRejimi = zakazlarRejimi.value === "arxiv";
 
