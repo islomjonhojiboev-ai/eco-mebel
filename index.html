@@ -197,7 +197,43 @@
       #zakazForm {
         padding: 16px;
       }
-    }
+    }/* Tezkor yangi zakaz tugmasi */
+#tezkorZakazBtn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 30px;
+  background: #087f9c;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.25);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#tezkorZakazBtn:hover {
+  background: #06677f;
+}
+
+#tezkorZakazBtn[hidden] {
+  display: none;
+}
+
+#asosiySahifa {
+  padding-bottom: 90px;
+}
+
+@media (max-width: 480px) {
+  #tezkorZakazBtn {
+    right: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+}
   </style>
 </head>
 <body>
@@ -516,7 +552,13 @@
       <tbody id="zakazlarJadvali"></tbody>
     </table>
   </div>
-</section>
+</<button
+  id="tezkorZakazBtn"
+  type="button"
+  aria-controls="yangiZakazBolimi"
+  hidden>
+  ＋ Yangi zakaz
+</button>
     <button id="logoutBtn" type="button">Chiqish</button>
 <script>
   window.addEventListener("error", function(event) {
@@ -770,7 +812,8 @@ const yangiZakazBolimi =
 
 const boshSahifaMenyusi =
   document.getElementById("boshSahifaMenyusi");
-function bolimniOch(bolim) {
+function bolimniOch(bolim) {document.getElementById("tezkorZakazBtn").hidden =
+    bolim === "yangi";
   boshSahifaMenyusi.hidden = bolim !== "bosh";
 
   document.getElementById("boshStatistika").hidden =
@@ -800,7 +843,16 @@ document
       bolimniOch("bosh");
     });
   });
+document .getElementById("tezkorZakazBtn") .addEventListener("click", () => { bolimniOch("yangi");
+document.getElementById("zakazForm").scrollIntoView({
+  behavior: "smooth",
+  block: "start"
+});
 
+document.getElementById("ism").focus({
+  preventScroll: true
+});
+});
 // Material hisobi
 const materialRoyxatiEl =document.getElementById("materialRoyxati"); const materialJamiEl = document.getElementById("materialJami"); const materialXabarEl = document.getElementById("materialXabar"); const materialFormEl = document.getElementById("materialForm"); const materialFormXabarEl = document.getElementById("materialFormXabar"); const materialSaqlashBtnEl = document.getElementById("materialSaqlashBtn"); const materialTozalashBtnEl = document.getElementById("materialTozalashBtn"); const materialZakazRaqamiEl = document.getElementById("materialZakazRaqami");
 let materiallar = []; const materialMiqdorlari = new Map(); let materiallarniToxtatish = null;
