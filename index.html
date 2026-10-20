@@ -1848,7 +1848,35 @@ materialJadvaliniChiz();
 bolimniOch("material");
 materialZakazRaqamiEl.scrollIntoView({ behavior: "smooth", block: "center" }); materialZakazRaqamiEl.focus({ preventScroll: true }); });
 amalKatagi.appendChild(materialTugma);
-// PDF tugmasi keyin shu yerga qo‘shiladi.
+const tbody = element("tbody", null, jadval);
+
+materialQatorlari.forEach((mat, indeks) => {
+  const tr = element("tr", null, tbody);
+  const summa = mat.summaHisob == null
+    ? null
+    : Number(mat.summaHisob) / 100;
+
+  element("td", indeks + 1, tr);
+  element("td", mat.nom ?? "—", tr);
+  element("td", mat.birlik ?? "—", tr);
+  element("td", mat.miqdor ?? "—", tr, "son");
+  element("td", pul(mat.narx), tr, "son");
+  element("td", pul(summa), tr, "son");
+});
+
+const jami = hisob.jamiHisob == null
+  ? null
+  : Number(hisob.jamiHisob) / 100;
+
+element(
+  "p",
+  "Jami material xarajati: " + pul(jami) + " TJS",
+  hujjat.body,
+  "jami"
+);
+}
+element( "p", "Hisobot tayyorlangan vaqt: " + new Date().toLocaleString("uz-UZ"), hujjat.body, "izoh" ); });
+amalKatagi.appendChild(pdfTugma);
 qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
   }
 },
