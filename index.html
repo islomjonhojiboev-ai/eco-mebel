@@ -1880,7 +1880,19 @@ const element = (teg, matn, ota, sinf) => { const el = hujjat.createElement(teg)
 const pul = (qiymat) => { if (qiymat == null || qiymat === "") return "—"; const son = Number(qiymat); return Number.isFinite(son) ? son.toFixed(2) : "—"; };
 const holatNomlari = { yangi: "Yangi", ishlab_chiqarishda: "Ishlab chiqarishda", tayyor: "Tayyor", topshirildi: "Topshirildi", bekor_qilindi: "Bekor qilindi" };
 element("h1", "Zakaz №" + raqam, hujjat.body); element( "p", "Ichki hisob — summalar TJS (somoniy)da.", hujjat.body, "izoh" );
-const chopTugma = element( "button", "Chop etish / PDF saqlash", hujjat.body, "ekran" ); chopTugma.type = "button"; chopTugma.addEventListener("click", () => { oyna.focus(); oyna.print(); });
+const chopTugma = element( "button", "Chop etish / PDF saqlash", hujjat.body, "ekran" ); chopTugma.type = "button"; chopTugma.addEventListener("click", () => { oyna.focus(); oyna.print(); });const qaytishTugma = element(
+  "button",
+  "Bosh sahifaga qaytish",
+  hujjat.body,
+  "ekran"
+);
+
+qaytishTugma.type = "button";
+qaytishTugma.style.marginLeft = "10px";
+
+qaytishTugma.addEventListener("click", () => {
+  oyna.close();
+});
 element( "p", "PDF saqlash imkoniyati brauzer va qurilmaga bog‘liq.", hujjat.body, "ekran izoh" );
 const malumotJadvali = element("table", null, hujjat.body); const malumotTanasi = element("tbody", null, malumotJadvali);
 const tafsilotlar = [ ["Zakaz raqami", raqam], ["Mijoz", zakaz.ism ?? "—"], ["Telefon", zakaz.telefon ?? "—"], ["Mebel", zakaz.mebel ?? "—"], ["O‘lcham", zakaz.olcham ?? "—"], ["Izoh", zakaz.izoh ?? "—"], [ "Holat", holatNomlari[zakaz.holat] ?? zakaz.holat ?? "—" ], ["Yaratilgan sana", sana], ["Topshirish sanasi", zakaz.topshirishSanasi || "—"], ["Zakaz narxi", pul(zakaz.narx)], ["Jami to‘langan", pul(zakaz.avans)], ["Qoldiq", pul(zakaz.qolganSumma)] ];
