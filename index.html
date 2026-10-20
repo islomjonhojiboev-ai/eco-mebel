@@ -1845,7 +1845,7 @@ if (!tasdiq) return;
 }
 materialMiqdorlari.clear(); materialZakazRaqamiEl.value = String(zakaz.zakazRaqami); materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz №" + raqam + " — " + (zakaz.ism || "Ism kiritilmagan") + ". Material miqdorlarini kiriting." + (zakaz.materialHisobi ? " Diqqat: saqlashda avvalgi material hisobi almashtiriladi." : "");
 materialJadvaliniChiz();
-bolimnioch("material");
+bolimniOch("material");
 materialZakazRaqamiEl.scrollIntoView({ behavior: "smooth", block: "center" }); materialZakazRaqamiEl.focus({ preventScroll: true }); });
 amalKatagi.appendChild(materialTugma);
 // PDF tugmasi keyin shu yerga qo‘shiladi.
