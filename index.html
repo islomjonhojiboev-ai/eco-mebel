@@ -1855,7 +1855,26 @@ oyna.opener = null;
 const hujjat = oyna.document; hujjat.documentElement.lang = "uz"; hujjat.title = "Zakaz-" + raqam + "-hisobi"; hujjat.head.replaceChildren(); hujjat.body.replaceChildren();
 const meta = hujjat.createElement("meta"); meta.setAttribute("charset", "utf-8");
 const viewport = hujjat.createElement("meta"); viewport.name = "viewport"; viewport.content = "width=device-width, initial-scale=1";
-const uslub = hujjat.createElement("style"); uslub.textContent = body { font-family: Arial, sans-serif; color: #172033; margin: 24px; line-height: 1.5; } h1 { font-size: 24px; margin-bottom: 4px; } h2 { font-size: 18px; margin-top: 28px; } .izoh { color: #64748b; font-size: 13px; } table { width: 100%; border-collapse: collapse; margin-top: 12px; } th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; white-space: pre-wrap; } th { background: #f1f5f9; } .son { text-align: right; } .jami { text-align: right; font-weight: bold; } button { padding: 10px 16px; cursor: pointer; margin: 12px 0; } @page { size: A4; margin: 14mm; } @media print { body { margin: 0; font-size: 11px; } .ekran { display: none !important; } thead { display: table-header-group; } tr { break-inside: avoid; } };
+const uslub = hujjat.createElement("style");
+
+uslub.textContent =
+  "body { font-family: Arial, sans-serif; color: #172033; margin: 24px; line-height: 1.5; } " +
+  "h1 { font-size: 24px; margin-bottom: 4px; } " +
+  "h2 { font-size: 18px; margin-top: 28px; } " +
+  ".izoh { color: #64748b; font-size: 13px; } " +
+  "table { width: 100%; border-collapse: collapse; margin-top: 12px; } " +
+  "th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; white-space: pre-wrap; } " +
+  "th { background: #f1f5f9; } " +
+  ".son { text-align: right; } " +
+  ".jami { text-align: right; font-weight: bold; } " +
+  "button { padding: 10px 16px; cursor: pointer; margin: 12px 0; } " +
+  "@page { size: A4; margin: 14mm; } " +
+  "@media print { " +
+    "body { margin: 0; font-size: 11px; } " +
+    ".ekran { display: none !important; } " +
+    "thead { display: table-header-group; } " +
+    "tr { break-inside: avoid; } " +
+  "}";
 hujjat.head.append(meta, viewport, uslub);
 const element = (teg, matn, ota, sinf) => { const el = hujjat.createElement(teg); if (matn != null) el.textContent = String(matn); if (sinf) el.className = sinf; if (ota) ota.appendChild(el); return el; };
 const pul = (qiymat) => { if (qiymat == null || qiymat === "") return "—"; const son = Number(qiymat); return Number.isFinite(son) ? son.toFixed(2) : "—"; };
