@@ -234,6 +234,50 @@
     font-size: 15px;
   }
 }
+ /* Ustalar bo‘limi */
+#ustaForm {
+  max-width: 650px;
+  padding: 20px;
+  border: 1px solid #dce5ef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+#ustaForm label {
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+#ustaForm input,
+#ustaForm select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  font: inherit;
+}
+
+#ustaSaqlashBtn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #087f9c;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+#ustaSaqlashBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#ustalarRoyxati {
+  display: grid;
+  gap: 12px;
+}   
   </style>
 </head>
 <body>
@@ -275,7 +319,9 @@
 <button type="button" data-bolim="material">
   🧮 Material hisobi
 </button>
-  
+ <button type="button" data-bolim="ustalar">
+  👷 Ustalar
+</button> 
 </nav>
     <p id="foydalanuvchiEmail"></p>
 
@@ -334,7 +380,41 @@
   <div id="muddatRoyxati"></div>
 </div>
 </div>
+<label for="ustaTelefon">Telefon raqami</label><br>
+<input id="ustaTelefon" type="tel" maxlength="30" required>
+<br><br>
 
+<label for="ustaKasbi">Bajaradigan ishi</label><br>
+<select id="ustaKasbi" required>
+  <option value="">Tanlang</option>
+  <option value="olchovchi">O‘lchovchi</option>
+  <option value="dizayner">Dizayner</option>
+  <option value="kesuvchi">Kesuvchi</option>
+  <option value="yiguvchi">Yig‘uvchi</option>
+  <option value="ornatuvchi">O‘rnatuvchi</option>
+</select>
+<br><br>
+
+<label for="ustaHaqIzohi">
+  Ish haqi yoki kelishilgan ulushi
+</label><br>
+<input
+  id="ustaHaqIzohi"
+  type="text"
+  maxlength="200"
+  placeholder="Masalan: har zakazdan 10% yoki oyiga 3000 TJS">
+<br><br>
+
+<label for="ustaFaolligi">Faollik holati</label><br>
+<select id="ustaFaolligi">
+  <option value="faol">Faol</option>
+  <option value="faol_emas">Faol emas</option>
+</select>
+<br><br>
+
+<button id="ustaSaqlashBtn" type="submit" disabled>
+  Ustani saqlash
+</button>
 <section id="yangiZakazBolimi" hidden>
   <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
@@ -813,7 +893,8 @@ const yangiZakazBolimi =
 
 const boshSahifaMenyusi =
   document.getElementById("boshSahifaMenyusi");
-function bolimniOch(bolim) {document.getElementById("tezkorZakazBtn").hidden =
+function bolimniOch(bolim) {document.getElementById("ustalarBolimi").hidden =
+    bolim !== "ustalar";document.getElementById("tezkorZakazBtn").hidden =
     bolim === "yangi";
   boshSahifaMenyusi.hidden = bolim !== "bosh";
 
@@ -854,6 +935,82 @@ document.getElementById("ism").focus({
   preventScroll: true
 });
 });
+    // Ustalar bo‘limi
+const ustaFormEl = document.getElementById("ustaForm");
+const ustaXabarEl = document.getElementById("ustaXabar");
+const ustaSaqlashBtnEl =
+  document.getElementById("ustaSaqlashBtn");
+
+const ustalarHolatiEl =
+  document.getElementById("ustalarHolati");
+
+const ustalarRoyxatiEl =
+  document.getElementById("ustalarRoyxati");
+
+let ustalarniToxtatish = null;
+    ustaFormEl.addEventListener("submit", async (event) => { event.preventDefault();
+if (ustaSaqlashBtnEl.disabled) return;
+ustaXabarEl.style.color = "red"; ustaXabarEl.textContent = "";
+const user = auth.currentUser;
+if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { ustaXabarEl.textContent = "Admin hisobiga kiring."; return; }
+const ism = document.getElementById("ustaIsmi").value.trim(); const telefon = document.getElementById("ustaTelefon").value.trim(); const kasb = document.getElementById("ustaKasbi").value; const haqIzohi = document.getElementById("ustaHaqIzohi").value.trim(); const faollik = document.getElementById("ustaFaolligi").value;
+const kasblar = [ "olchovchi", "dizayner", "kesuvchi", "yiguvchi", "ornatuvchi" ];
+if ( !ism  ism.length > 100  !telefon  telefon.length > 30  !kasblar.includes(kasb)  haqIzohi.length > 200  !["faol", "faol_emas"].includes(faollik) ) { ustaXabarEl.textContent = "Ism, telefon va boshqa maydonlarni tekshiring."; return; }
+ustaSaqlashBtnEl.disabled = true; ustaXabarEl.style.color = "#164e63"; ustaXabarEl.textContent = "Usta saqlanmoqda...";
+try { await addDoc(collection(db, "ustalar"), { ism: ism, telefon: telefon, kasb: kasb, haqIzohi: haqIzohi, faol: faollik === "faol", userId: user.uid, yaratilganVaqt: serverTimestamp() });
+ustaFormEl.reset();
+ustaXabarEl.style.color = "green";
+ustaXabarEl.textContent = "Usta saqlandi!";
+} catch (error) { ustaXabarEl.style.color = "red"; ustaXabarEl.textContent = "Saqlanmadi: " + (error.code || error.message); } finally { ustaSaqlashBtnEl.disabled = auth.currentUser?.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2"; } });function ustalarRoyxatiniChiz(ustalar) { ustalarRoyxatiEl.replaceChildren();
+ustalarHolatiEl.textContent = ustalar.length ? "Jami ustalar: " + ustalar.length : "Hali usta qo‘shilmagan.";
+const kasbNomlari = { olchovchi: "O‘lchovchi", dizayner: "Dizayner", kesuvchi: "Kesuvchi", yiguvchi: "Yig‘uvchi", ornatuvchi: "O‘rnatuvchi" };
+for (const usta of ustalar) { const karta = document.createElement("div"); karta.style.cssText = "padding:16px;border:1px solid #dce5ef;" + "border-radius:12px;background:#fff;";
+const sarlavha = document.createElement("h4");
+sarlavha.style.margin = "0 0 8px";
+sarlavha.textContent = usta.ism || "Ismsiz";
+
+const malumotlar = [
+  "Telefon: " + (usta.telefon || "—"),
+  "Ishi: " + (kasbNomlari[usta.kasb] || "—"),
+  "Ish haqi / ulushi: " + (usta.haqIzohi || "Kiritilmagan"),
+  "Holati: " + (usta.faol === true ? "Faol" : "Faol emas")
+];
+
+karta.appendChild(sarlavha);
+
+for (const matn of malumotlar) {
+  const qator = document.createElement("p");
+  qator.style.margin = "6px 0";
+  qator.textContent = matn;
+  karta.appendChild(qator);
+}
+
+ustalarRoyxatiEl.appendChild(karta);
+} }onAuthStateChanged(auth, (user) => { if (ustalarniToxtatish) { ustalarniToxtatish(); ustalarniToxtatish = null; }
+ustaSaqlashBtnEl.disabled = true; ustalarRoyxatiEl.replaceChildren(); ustaXabarEl.textContent = ""; ustaFormEl.reset();
+if (!user) { ustalarHolatiEl.textContent = "Avval hisobga kiring."; return; }
+if (user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { ustalarHolatiEl.textContent = "Admin ruxsati kerak."; return; }
+ustaSaqlashBtnEl.disabled = false; ustalarHolatiEl.textContent = "Ustalar yuklanmoqda...";
+ustalarniToxtatish = onSnapshot( collection(db, "ustalar"), (snapshot) => { if (auth.currentUser?.uid !== user.uid) return;
+  const ustalar = snapshot.docs.map((hujjat) => ({
+    ...hujjat.data(),
+    id: hujjat.id
+  }));
+
+  ustalar.sort((a, b) =>
+    String(a.ism || "").localeCompare(String(b.ism || ""))
+  );
+
+  ustalarRoyxatiniChiz(ustalar);
+},
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  ustalarRoyxatiEl.replaceChildren();
+  ustalarHolatiEl.textContent =
+    "Ustalar yuklanmadi: " + (error.code || error.message);
+}
+); });
 // Material hisobi
 const materialRoyxatiEl =document.getElementById("materialRoyxati"); const materialJamiEl = document.getElementById("materialJami"); const materialXabarEl = document.getElementById("materialXabar"); const materialFormEl = document.getElementById("materialForm"); const materialFormXabarEl = document.getElementById("materialFormXabar"); const materialSaqlashBtnEl = document.getElementById("materialSaqlashBtn"); const materialTozalashBtnEl = document.getElementById("materialTozalashBtn"); const materialZakazRaqamiEl = document.getElementById("materialZakazRaqami");
 let materiallar = []; const materialMiqdorlari = new Map(); let materiallarniToxtatish = null;
