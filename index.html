@@ -24,7 +24,7 @@
     #loginSection {
       max-width: 1200px;
       margin: 0 auto;
-    }
+    }h
 
     h2 {
       margin: 16px 0;
@@ -955,7 +955,18 @@ const user = auth.currentUser;
 if (!user || user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2") { ustaXabarEl.textContent = "Admin hisobiga kiring."; return; }
 const ism = document.getElementById("ustaIsmi").value.trim(); const telefon = document.getElementById("ustaTelefon").value.trim(); const kasb = document.getElementById("ustaKasbi").value; const haqIzohi = document.getElementById("ustaHaqIzohi").value.trim(); const faollik = document.getElementById("ustaFaolligi").value;
 const kasblar = [ "olchovchi", "dizayner", "kesuvchi", "yiguvchi", "ornatuvchi" ];
-if ( !ism  ism.length > 100  !telefon  telefon.length > 30  !kasblar.includes(kasb)  haqIzohi.length > 200  !["faol", "faol_emas"].includes(faollik) ) { ustaXabarEl.textContent = "Ism, telefon va boshqa maydonlarni tekshiring."; return; }
+if (
+  !ism ||
+  ism.length > 100 ||
+  !telefon ||
+  telefon.length > 30 ||
+  !kasblar.includes(kasb) ||
+  haqIzohi.length > 200 ||
+  !["faol", "faol_emas"].includes(faollik)
+) {
+  ustaXabarEl.textContent = "Ism, telefon va boshqa maydonlarni tekshiring.";
+  return;
+}
 ustaSaqlashBtnEl.disabled = true; ustaXabarEl.style.color = "#164e63"; ustaXabarEl.textContent = "Usta saqlanmoqda...";
 try { await addDoc(collection(db, "ustalar"), { ism: ism, telefon: telefon, kasb: kasb, haqIzohi: haqIzohi, faol: faollik === "faol", userId: user.uid, yaratilganVaqt: serverTimestamp() });
 ustaFormEl.reset();
