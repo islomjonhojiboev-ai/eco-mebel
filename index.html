@@ -1205,9 +1205,37 @@ korsatBtn.addEventListener("click", async () => {
         throw new Error("Bu zakaz ustaga avval biriktirilgan.");
       }
 
-      const biriktirishlar = {
+     const biriktirishlar = {
         ...(joriy.ustaBiriktirishlar || {})
-      };await zakazlarniKorsat(); xabar.style.color = "green"; xabar.textContent = "Zakaz №" + String(raqam).padStart(4, "0") + " ustaga biriktirildi."; } catch (error) { xatoKorsat(error); } finally { biriktirBtn.disabled = false; } });
+      };
+
+      ids.push(usta.id);
+
+      biriktirishlar[usta.id] = {
+        ism: u.ism,
+        kasb: u.kasb,
+        biriktirilganVaqt: serverTimestamp(),
+        biriktirganUid: adminUid
+      };
+
+      transaction.update(zakazHujjati.ref, {
+        ustaIds: ids,
+        ustaBiriktirishlar: biriktirishlar
+      });
+    });
+
+    await zakazlarniKorsat();
+
+    xabar.style.color = "green";
+    xabar.textContent =
+      "Zakaz №" + String(raqam).padStart(4, "0") +
+      " ustaga biriktirildi.";
+  } catch (error) {
+    xatoKorsat(error);
+  } finally {
+    biriktirBtn.disabled = false;
+  }
+});
 ochirBtn.addEventListener("click", async () => {
   if (auth.currentUser?.uid !== adminUid) {
     xatoKorsat(new Error("Admin hisobiga kiring."));
