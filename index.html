@@ -1071,7 +1071,7 @@ async function zakazlarniKorsat() {
   }));
 
   royxat.sort(
-  (a, b) => (b.zakazRaqami  0) - (a.zakazRaqami  0)
+  (a, b) => (b.zakazRaqami || 0) - (a.zakazRaqami || 0)
 );
 
   xabar.textContent = royxat.length
