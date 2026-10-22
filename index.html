@@ -380,41 +380,72 @@
   <div id="muddatRoyxati"></div>
 </div>
 </div>
-<label for="ustaTelefon">Telefon raqami</label><br>
-<input id="ustaTelefon" type="tel" maxlength="30" required>
-<br><br>
+<section id="ustalarBolimi" hidden>
+  <button type="button" class="boshgaQaytish">
+    ← Bosh sahifa
+  </button>
 
-<label for="ustaKasbi">Bajaradigan ishi</label><br>
-<select id="ustaKasbi" required>
-  <option value="">Tanlang</option>
-  <option value="olchovchi">O‘lchovchi</option>
-  <option value="dizayner">Dizayner</option>
-  <option value="kesuvchi">Kesuvchi</option>
-  <option value="yiguvchi">Yig‘uvchi</option>
-  <option value="ornatuvchi">O‘rnatuvchi</option>
-</select>
-<br><br>
+  <h2>Ustalar</h2>
 
-<label for="ustaHaqIzohi">
-  Ish haqi yoki kelishilgan ulushi
-</label><br>
-<input
-  id="ustaHaqIzohi"
-  type="text"
-  maxlength="200"
-  placeholder="Masalan: har zakazdan 10% yoki oyiga 3000 TJS">
-<br><br>
+  <form id="ustaForm">
+    <label for="ustaIsmi">Ustaning ismi</label><br>
+    <input
+      id="ustaIsmi"
+      type="text"
+      maxlength="100"
+      placeholder="Ustaning ismi"
+      required>
+    <br><br>
 
-<label for="ustaFaolligi">Faollik holati</label><br>
-<select id="ustaFaolligi">
-  <option value="faol">Faol</option>
-  <option value="faol_emas">Faol emas</option>
-</select>
-<br><br>
+    <label for="ustaTelefon">Telefon raqami</label><br>
+    <input
+      id="ustaTelefon"
+      type="tel"
+      maxlength="30"
+      required>
+    <br><br>
 
-<button id="ustaSaqlashBtn" type="submit" disabled>
-  Ustani saqlash
-</button>
+    <label for="ustaKasbi">Bajaradigan ishi</label><br>
+    <select id="ustaKasbi" required>
+      <option value="">Tanlang</option>
+      <option value="olchovchi">O‘lchovchi</option>
+      <option value="dizayner">Dizayner</option>
+      <option value="kesuvchi">Kesuvchi</option>
+      <option value="yiguvchi">Yig‘uvchi</option>
+      <option value="ornatuvchi">O‘rnatuvchi</option>
+    </select>
+    <br><br>
+    <label for="ustaHaqIzohi">
+      Ish haqi yoki kelishilgan ulushi
+    </label><br>
+    <input
+      id="ustaHaqIzohi"
+      type="text"
+      maxlength="200"
+      placeholder="Masalan: har zakazdan 10% yoki oyiga 3000 TJS">
+    <br><br>
+
+    <label for="ustaFaolligi">Faollik holati</label><br>
+    <select id="ustaFaolligi">
+      <option value="faol">Faol</option>
+      <option value="faol_emas">Faol emas</option>
+    </select>
+    <br><br>
+
+    <button id="ustaSaqlashBtn" type="submit" disabled>
+      Ustani saqlash
+    </button>
+  </form>
+
+  <p id="ustaXabar" role="status"></p>
+
+  <h3>Ustalar ro‘yxati</h3>
+  <p id="ustalarHolati" role="status">
+    Ustalar yuklanmoqda...
+  </p>
+
+  <div id="ustalarRoyxati"></div>
+</section>
 <section id="yangiZakazBolimi" hidden>
   <button type="button" class="boshgaQaytish">
     ← Bosh sahifa
