@@ -1005,11 +1005,13 @@ ustaXabarEl.style.color = "green";
 ustaXabarEl.textContent = "Usta saqlandi!";
 } catch (error) { ustaXabarEl.style.color = "red"; ustaXabarEl.textContent = "Saqlanmadi: " + (error.code || error.message); } finally { ustaSaqlashBtnEl.disabled = auth.currentUser?.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2"; } });function ustalarRoyxatiniChiz(ustalar) { ustalarRoyxatiEl.replaceChildren();
 ustalarHolatiEl.textContent = ustalar.length ? "Jami ustalar: " + ustalar.length : "Hali usta qo‘shilmagan.";
+const adminUid = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
 const kasbNomlari = { olchovchi: "O‘lchovchi", dizayner: "Dizayner", kesuvchi: "Kesuvchi", yiguvchi: "Yig‘uvchi", ornatuvchi: "O‘rnatuvchi" };
 for (const usta of ustalar) { const karta = document.createElement("div"); karta.style.cssText = "padding:16px;border:1px solid #dce5ef;" + "border-radius:12px;background:#fff;";
 const sarlavha = document.createElement("h4");
 sarlavha.style.margin = "0 0 8px";
 sarlavha.textContent = usta.ism || "Ismsiz";
+karta.appendChild(sarlavha);
 
 const malumotlar = [
   "Telefon: " + (usta.telefon || "—"),
@@ -1018,15 +1020,222 @@ const malumotlar = [
   "Holati: " + (usta.faol === true ? "Faol" : "Faol emas")
 ];
 
-karta.appendChild(sarlavha);
-
 for (const matn of malumotlar) {
-  const qator = document.createElement("p");
-  qator.style.margin = "6px 0";
-  qator.textContent = matn;
-  karta.appendChild(qator);
+  const p = document.createElement("p");
+  p.style.margin = "6px 0";
+  p.textContent = matn;
+  karta.appendChild(p);
 }
 
+const amallar = document.createElement("div");
+amallar.style.cssText =
+  "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;";
+
+const xabar = document.createElement("p");
+xabar.setAttribute("role", "status");
+
+const zakazlarJoy = document.createElement("div");
+
+function tugmaYarat(matn) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = matn;
+  btn.style.cssText =
+    "padding:10px 14px;border:1px solid #cbd5e1;" +
+    "border-radius:8px;cursor:pointer;font:inherit;";
+  amallar.appendChild(btn);
+  return btn;
+}function xatoKorsat(error) {
+  xabar.style.color = "red";
+  xabar.textContent =
+    "Xatolik: " + (error.message || error.code || String(error));
+}
+
+async function zakazlarniKorsat() {
+  zakazlarJoy.replaceChildren();
+  xabar.style.color = "#164e63";
+  xabar.textContent = "Zakazlar yuklanmoqda...";
+
+  const natija = await getDocs(
+    query(
+      collection(db, "zakazlar"),
+      where("ustaIds", "array-contains", usta.id)
+    )
+  );
+
+  if (auth.currentUser?.uid !== adminUid) return;
+
+  const royxat = natija.docs.map((h) => ({
+    ...h.data(),
+    id: h.id
+  }));
+
+  royxat.sort(
+    (a, b) => (b.zakazRaqamiurn;
+
+  const royxat = nati0)
+  );
+
+  xabar.textContent = royxat.length
+    ? "Biriktirilgan zakazlar: " + royxat.length
+    : "Bu ustaga hali zakaz biriktirilmagan.";
+
+  for (const z of royxat) {
+    const p = document.createElement("p");
+    p.style.cssText =
+      "padding:10px;background:#f1f5f9;border-radius:8px;";
+
+    p.textContent =
+      "№" + String(z.zakazRaqami || "").padStart(4, "0") +
+      " — " + (z.ism || "Ism kiritilmagan") +
+      " | Mebel: " + (z.mebel || "—") +
+      " | Holat: " + (z.holat || "yangi") +
+      (z.arxivlangan === true ? " | Arxiv" : "");
+
+    zakazlarJoy.appendChild(p);
+  }
+}
+
+const biriktirBtn = tugmaYarat("Zakaz biriktirish");
+const korsatBtn = tugmaYarat("Zakazlarini ko‘rish");
+const ochirBtn = tugmaYarat("Ustani o‘chirish");
+ochirBtn.style.color = "#b91c1c";
+
+korsatBtn.addEventListener("click", async () => {
+  korsatBtn.disabled = true;
+  try {
+    await zakazlarniKorsat();
+  } catch (error) {
+    xatoKorsat(error);
+  } finally {
+    korsatBtn.disabled = false;
+  }
+});biriktirBtn.addEventListener("click", async () => {
+  if (auth.currentUser?.uid !== adminUid) {
+    xatoKorsat(new Error("Admin hisobiga kiring."));
+    return;
+  }
+
+  const matn = window.prompt(
+    (usta.ism || "Usta") +
+    " uchun zakaz raqamini kiriting. Masalan: 12",
+    ""
+  );
+
+  if (matn === null) return;
+
+  const raqam = Number(matn.trim());
+
+  if (!Number.isSafeInteger(raqam) || raqam < 1) {
+    xatoKorsat(new Error("Zakaz raqamini to‘g‘ri kiriting."));
+    return;
+  }
+
+  biriktirBtn.disabled = true;
+  xabar.style.color = "#164e63";
+  xabar.textContent = "Zakaz qidirilmoqda...";
+
+  try {
+    const natija = await getDocs(
+      query(
+        collection(db, "zakazlar"),
+        where("zakazRaqami", "==", raqam)
+      )
+    );
+
+    if (natija.size !== 1) {
+      throw new Error(
+        natija.empty
+          ? "Bu raqamli zakaz topilmadi."
+          : "Bu raqam bilan bir nechta zakaz topildi."
+      );
+    }
+
+    const zakazHujjati = natija.docs[0];
+    const z = zakazHujjati.data();
+
+    const tasdiq = window.confirm(
+      "Usta: " + (usta.ism || "—") +
+      "\nIshi: " + (kasbNomlari[usta.kasb] || "—") +
+      "\nZakaz №" + String(raqam).padStart(4, "0") +
+      "\nMijoz: " + (z.ism || "—") +
+      "\nMebel: " + (z.mebel || "—") +
+      "\n\nShu ustaga biriktirilsinmi?"
+    );
+
+    if (!tasdiq) {
+      xabar.textContent = "Biriktirish bekor qilindi.";
+      return;
+    }
+
+    await runTransaction(db, async (transaction) => {
+      const ustaRef = doc(db, "ustalar", usta.id);
+      const ustaSnap = await transaction.get(ustaRef);
+      const zakazSnap = await transaction.get(zakazHujjati.ref);
+
+      if (auth.currentUser?.uid !== adminUid) {
+        throw new Error("Admin hisobiga qayta kiring.");
+      }
+
+      if (!ustaSnap.exists() || !zakazSnap.exists()) {
+        throw new Error("Usta yoki zakaz o‘chirilgan.");
+      }
+
+      const u = ustaSnap.data();
+      const joriy = zakazSnap.data();
+
+      if (u.faol !== true) {
+        throw new Error("Faol bo‘lmagan ustaga zakaz biriktirilmaydi.");
+      }
+
+      if (
+        joriy.arxivlangan === true ||
+        joriy.arxiv === true ||
+        ["topshirildi", "topshirilgan", "bekor_qilindi", "bekor"]
+          .includes(joriy.holat)
+      ) {
+        throw new Error(
+          "Arxivdagi, topshirilgan yoki bekor qilingan zakazni biriktirib bo‘lmaydi."
+        );
+      }
+
+      const ids = Array.isArray(joriy.ustaIds)
+        ? [...joriy.ustaIds]
+        : [];
+
+      if (ids.includes(usta.id)) {
+        throw new Error("Bu zakaz ustaga avval biriktirilgan.");
+      }
+
+      const biriktirishlar = {
+        ...(joriy.ustaBiriktirishlar || {})
+      };await zakazlarniKorsat(); xabar.style.color = "green"; xabar.textContent = "Zakaz №" + String(raqam).padStart(4, "0") + " ustaga biriktirildi."; } catch (error) { xatoKorsat(error); } finally { biriktirBtn.disabled = false; } });
+ochirBtn.addEventListener("click", async () => {
+  if (auth.currentUser?.uid !== adminUid) {
+    xatoKorsat(new Error("Admin hisobiga kiring."));
+    return;
+  }
+
+  const tasdiq = window.confirm(
+    (usta.ism || "Usta") + "ni ro‘yxatdan o‘chirasizmi?" +
+    "\n\nZakazlar va to‘lovlar o‘chirilmaydi." +
+    "\nOldingi zakazlardagi biriktirish yozuvlari saqlanadi." +
+    "\nBu amalni ushbu tugma orqali qaytarib bo‘lmaydi."
+  );
+
+  if (!tasdiq) return;
+
+  ochirBtn.disabled = true;
+
+  try {
+    await deleteDoc(doc(db, "ustalar", usta.id));
+  } catch (error) {
+    xatoKorsat(error);
+    ochirBtn.disabled = false;
+  }
+});
+
+karta.append(amallar, xabar, zakazlarJoy);
 ustalarRoyxatiEl.appendChild(karta);
 } }onAuthStateChanged(auth, (user) => { if (ustalarniToxtatish) { ustalarniToxtatish(); ustalarniToxtatish = null; }
 ustaSaqlashBtnEl.disabled = true; ustalarRoyxatiEl.replaceChildren(); ustaXabarEl.textContent = ""; ustaFormEl.reset();
