@@ -3232,5 +3232,166 @@ menuBox.querySelectorAll("[data-kind]").forEach(button => {
   }
 })();
 </script>
+<!-- Umumiy oylik hisobot: </body> dan oldin BIR MARTA qo‘shing. -->
+<script type="module">
+import { getApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { getFirestore, collection, getDocsFromServer } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+if (!window.ecoMonthlyAllInstalledV1) {
+window.ecoMonthlyAllInstalledV1=true;
+
+function ecoMonthlyCalculate(raw, month, today) {
+  const validDate = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(value+"T12:00:00Z")) && new Date(value+"T12:00:00Z").toISOString().slice(0,10)===value;
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!validDate(month+"-01")||!validDate(today))throw new Error("Sana noto‘g‘ri.");
+  if(month>today.slice(0,7))throw new Error("Kelajak oy uchun yakuniy hisob chiqarilmaydi.");
+  const [year,mon]=month.split("-").map(Number);
+  const last=new Date(Date.UTC(year,mon,0,12)).toISOString().slice(0,10);
+  const until=last<today?last:today,first=month+"-01";
+  const groups=new Map();
+  const group=id=>{if(typeof id!=="string"||!id)throw new Error("Usta IDsi noto‘g‘ri.");if(!groups.has(id))groups.set(id,{id,worker:null,rates:[],days:new Map(),payments:[]});return groups.get(id);};
+  const integer=(n,positive=false)=>Number.isSafeInteger(n)&&(positive?n>0:n>=0);
+  for(const w of raw.workers)group(w.id).worker=w;
+  for(const r of raw.rates){if(!validDate(r.sana)||!integer(r.kunlikTiyin,true))throw new Error("Stavka sanasi yoki summasi noto‘g‘ri.");group(r.ustaId).rates.push(r);}
+  for(const d of raw.days){
+    if(!validDate(d.sana)||!["toliq","yarim","kelmadi","belgilanmagan"].includes(d.holat))throw new Error("Davomat yozuvi noto‘g‘ri.");
+    if(d.holat!=="belgilanmagan"&&(!integer(d.kunlikTiyin,true)||!integer(d.haqTiyin)))throw new Error("Davomat summasi noto‘g‘ri.");
+    if(d.holat!=="belgilanmagan"){
+      const expected=d.holat==="toliq"?d.kunlikTiyin:d.holat==="yarim"?Math.round(d.kunlikTiyin/2):0;
+      if(d.haqTiyin!==expected)throw new Error("Davomat summasi kun holatiga mos emas.");
+    }
+    const g=group(d.ustaId);if(g.days.has(d.sana))throw new Error("Bir ustaga bir sanada takror davomat bor.");g.days.set(d.sana,d);
+  }
+  for(const p of raw.payments){
+    if(!validDate(p.sana)||!integer(p.summaTiyin,true))throw new Error("To‘lov sanasi yoki summasi noto‘g‘ri.");
+    group(p.ustaId).payments.push(p);
+  }
+  const rows=[];
+  for(const g of groups.values()){
+    const row={id:g.id,name:g.worker?.ism||("O‘chirilgan usta: "+g.id),state:g.worker?(g.worker.faol===true?"Faol":"Faol emas"):"O‘chirilgan",full:0,half:0,absent:0,before:0,earned:0,paid:0,missing:0,cancelled:0,note:""};
+    g.rates.sort((a,b)=>a.sana.localeCompare(b.sana));
+    if(g.rates.some((r,i)=>i&&r.sana===g.rates[i-1].sana))throw new Error("Bir ustaga bir sanada takror stavka bor.");
+    const starts=[...g.rates.map(r=>r.sana),...g.days.keys()].sort();
+    if(starts.length&&starts[0]<=until){
+      const from=Date.parse(starts[0]+"T12:00:00Z"),end=Date.parse(until+"T12:00:00Z");
+      if((end-from)/86400000>50000)throw new Error("Hisob davri juda uzun.");
+      let rateIndex=-1;
+      for(let t=from;t<=end;t+=86400000){
+        const date=new Date(t).toISOString().slice(0,10),saved=g.days.get(date);
+        while(rateIndex+1<g.rates.length&&g.rates[rateIndex+1].sana<=date)rateIndex++;
+        let kind,value;
+        if(saved&&saved.holat!=="belgilanmagan"){kind=saved.holat;value=saved.haqTiyin;}
+        else if(rateIndex>=0){kind="toliq";value=g.rates[rateIndex].kunlikTiyin;}
+        else{row.missing++;continue;}
+        if(date<first)row.before+=value;
+        else{row.earned+=value;if(kind==="toliq")row.full++;if(kind==="yarim")row.half++;if(kind==="kelmadi")row.absent++;}
+      }
+    }
+    for(const p of g.payments){
+      if(p.sana>until)continue;
+      if(p.bekorQilingan===true){if(p.sana>=first)row.cancelled++;continue;}
+      if(p.sana<first)row.before-=p.summaTiyin;else row.paid+=p.summaTiyin;
+    }
+    row.balance=row.before+row.earned-row.paid;
+    row.due=Math.max(0,row.balance);row.advance=Math.max(0,-row.balance);
+    if(!starts.length)row.note="Stavka/davomat yo‘q; hisoblangan haq aniqlanmagan.";
+    else if(starts[0]>until)row.note="Hisob bu davrdan keyin boshlanadi.";
+    if(row.missing)row.note+=(row.note?" ":"")+row.missing+" kun uchun stavka yetishmaydi (oldingi davr ham kiradi).";
+    for(const key of ["before","earned","paid","balance","due","advance"])if(!Number.isSafeInteger(row[key]))throw new Error("Jami summa xavfsiz son chegarasidan oshdi.");
+    rows.push(row);
+  }
+  rows.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const totals={full:0,half:0,absent:0,before:0,earned:0,paid:0,due:0,advance:0,cancelled:0};
+  for(const row of rows)for(const key of Object.keys(totals)){totals[key]+=row[key];if(!Number.isSafeInteger(totals[key]))throw new Error("Jami summa juda katta.");}
+  return {month,until,rows,totals,incomplete:rows.some(r=>r.missing||r.note.startsWith("Stavka/davomat yo‘q"))};
+}
+
+const EM_ADMIN="xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+const emDate=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const emMoney=n=>(n/100).toFixed(2);
+const emHeaders=["Usta / holati","To‘liq kun","½ kun","Kelmadi","Oldingi qoldiq, TJS","Hisoblangan haq, TJS","Berildi, TJS","To‘lanadi, TJS","Ortiqcha avans, TJS"];
+let emData=null,emBox=null,emBusy=false,emGeneration=0;
+function emElement(d,tag,text,parent){const el=d.createElement(tag);if(text!==null)el.textContent=text;if(parent)parent.append(el);return el;}
+function emTable(d,data,parent){
+  const table=emElement(d,"table",null,parent);table.className="em-table";
+  const head=emElement(d,"tr",null,emElement(d,"thead",null,table));
+  emHeaders.forEach(h=>emElement(d,"th",h,head));
+  const body=emElement(d,"tbody",null,table);
+  for(const r of data.rows){
+    const tr=emElement(d,"tr",null,body);
+    const values=[r.name+" ("+r.state+")",r.full,r.half,r.absent,...[r.before,r.earned,r.paid,r.due,r.advance].map(emMoney)];
+    values.forEach(v=>emElement(d,"td",String(v),tr));
+    if(r.note){const note=emElement(d,"td",r.note,emElement(d,"tr",null,body));note.colSpan=9;note.style.color="#b91c1c";}
+  }
+  const t=data.totals,tr=emElement(d,"tr",null,emElement(d,"tfoot",null,table));
+  ["Jami",t.full,t.half,t.absent,...[t.before,t.earned,t.paid,t.due,t.advance].map(emMoney)].forEach(v=>emElement(d,"th",String(v),tr));
+}
+function emNotes(d,data,parent){
+  emElement(d,"p","Hisob oyi: "+data.month+" | Hisoblangan oxirgi sana: "+data.until+" | Ustalar: "+data.rows.length,parent);
+  if(data.incomplete){const p=emElement(d,"p","DIQQAT: hisob to‘liq emas. Stavka yoki davomat muammolari bor; jami summalar to‘liq bo‘lmasligi mumkin.",parent);p.style.color="#b91c1c";}
+  emElement(d,"p","Birinchi stavka/davomat sanasidan boshlab belgilanmagan kunlar to‘liq ish kuni hisoblanadi. Dam olish kunlari avtomatik chiqarilmaydi. Saqlangan kunning o‘sha paytdagi haqi saqlanadi. Faol emas/o‘chirilgan holati o‘zi haq hisoblashni to‘xtatmaydi.",parent);
+  emElement(d,"p","To‘lanadigan qoldiq va ortiqcha avans alohida jamlangan; bir ustaning avansi boshqasining qarzini kamaytirmaydi. Manfiy oldingi qoldiq — ortiqcha avans.",parent);
+  emElement(d,"p","Bekor qilingan to‘lovlar jamiga kiritilmadi. Tanlangan oyda bekor qilingan deb belgilangan to‘lov yozuvlari: "+data.totals.cancelled+" ta. Eski qo‘lda kiritilgan Xarajatlar bu hisobga import qilinmaydi. Bu hozirgi yozuvlar asosidagi hisobot, o‘zgarmas tarixiy oy yopilishi emas.",parent);
+  emElement(d,"p","Serverdan olingan vaqt: "+data.loadedAt+". Ma’lumotlar turli kolleksiyalardan alohida olinadi; boshqa oynada o‘zgarish bo‘lsa qayta Yangilashni bosing.",parent);
+}
+function emReset(){emGeneration++;emData=null;if(emBox){emBox.querySelector(".em-result").replaceChildren();emBox.querySelector(".em-pdf").disabled=true;}}
+function emInstall(){
+  const panel=document.getElementById("payrollPanel");if(!panel||document.getElementById("ecoMonthlyAllV1"))return;
+  emBox=document.createElement("details");emBox.id="ecoMonthlyAllV1";
+  emBox.style.cssText="padding:16px;border:1px solid #cbd5e1;border-radius:12px;margin:16px 0;background:#fff";
+  emBox.innerHTML=`<summary style="font-size:18px;color:#164e63;cursor:pointer">Barcha ustalar — umumiy oylik hisobot</summary>
+    <p><label>Hisobot oyi <input class="em-month" type="month"></label></p>
+    <button class="em-load" type="button">Hisobotni yangilash</button>
+    <button class="em-pdf" type="button" disabled>Umumiy hisobotni PDF chiqarish</button>
+    <p class="em-status" role="status"></p><div class="em-result" style="overflow-x:auto"></div>`;
+  const heading=panel.querySelector("h2");if(heading)heading.after(emBox);else panel.prepend(emBox);
+  const style=document.createElement("style");style.textContent=`#ecoMonthlyAllV1 button{padding:11px 15px;margin:5px;border:0;border-radius:8px;background:#087f9c;color:#fff;font:inherit;cursor:pointer}#ecoMonthlyAllV1 .em-pdf{background:#7c3aed}#ecoMonthlyAllV1 button:disabled{opacity:.5;cursor:not-allowed}#ecoMonthlyAllV1 input{padding:9px;font:inherit}.em-table{width:100%;border-collapse:collapse;font-size:13px}.em-table th,.em-table td{border:1px solid #cbd5e1;padding:8px;vertical-align:top}.em-table th{background:#e8f5fa}.em-table td:not(:first-child){text-align:right}`;document.head.append(style);
+  const month=emBox.querySelector(".em-month"),load=emBox.querySelector(".em-load"),pdf=emBox.querySelector(".em-pdf"),status=emBox.querySelector(".em-status"),result=emBox.querySelector(".em-result");
+  month.value=emDate().slice(0,7);month.max=emDate().slice(0,7);
+  month.onchange=()=>{emReset();status.textContent="Oy o‘zgardi. Hisobotni yangilashni bosing.";};
+  load.onclick=async()=>{
+    if(emBusy)return;emReset();const token=emGeneration,chosen=month.value;
+    emBusy=true;load.disabled=true;month.disabled=true;status.style.color="#164e63";status.textContent="Serverdan olinmoqda...";
+    try{
+      const app=getApp(),auth=getAuth(app),db=getFirestore(app);
+      if(auth.currentUser?.uid!==EM_ADMIN)throw new Error("Admin hisobiga kiring.");
+      const snaps=await Promise.all(["ustalar","ustaStavkalari","ustaDavomat","ustaTolovlari"].map(c=>getDocsFromServer(collection(db,c))));
+      if(auth.currentUser?.uid!==EM_ADMIN||token!==emGeneration)return;
+      const [workers,rates,days,payments]=snaps.map(s=>s.docs.map(d=>({...d.data(),id:d.id})));
+      const data=ecoMonthlyCalculate({workers,rates,days,payments},chosen,emDate());
+      data.loadedAt=new Date().toLocaleString("uz-UZ");emData=data;
+      emNotes(document,data,result);emTable(document,data,result);
+      pdf.disabled=data.rows.length===0;
+      status.style.color=data.incomplete?"#b91c1c":"#164e63";
+      status.textContent=data.incomplete?"Hisobot tayyor, lekin to‘liq emas. Ogohlantirishlarni tekshiring.":"Hisobot tayyor. Summalar TJSda.";
+    }catch(error){if(token===emGeneration){emData=null;pdf.disabled=true;status.style.color="#b91c1c";status.textContent="Hisobot olinmadi: "+(error.message||error.code);}}
+    finally{emBusy=false;load.disabled=false;month.disabled=false;}
+  };
+  pdf.onclick=()=>{
+    if(!emData||emData.month!==month.value)return;
+    if(getAuth(getApp()).currentUser?.uid!==EM_ADMIN){emReset();status.textContent="Admin hisobiga kiring.";return;}
+    const data=emData,w=window.open("","_blank");
+    if(!w){status.textContent="Yangi oyna ochilmadi. Sayt uchun yangi oynalarga ruxsat bering.";return;}
+    try{
+      w.opener=null;const d=w.document;d.documentElement.lang="uz";d.head.replaceChildren();d.body.replaceChildren();d.title="Eco Mebel — umumiy oylik hisobot — "+data.month;
+      const meta=d.createElement("meta");meta.setAttribute("charset","UTF-8");d.head.append(meta);
+      const style=d.createElement("style");style.textContent=`body{font-family:Arial,sans-serif;line-height:1.4;margin:24px;color:#172033}h1{color:#164e63;font-size:24px}p{font-size:12px}.em-table{width:100%;border-collapse:collapse;font-size:10px;table-layout:auto}.em-table th,.em-table td{border:1px solid #94a3b8;padding:6px;vertical-align:top;overflow-wrap:anywhere}.em-table th{background:#e8f5fa}.em-table td:not(:first-child){text-align:right}button{padding:12px;margin:6px;cursor:pointer;font:inherit}@page{size:A4 landscape;margin:10mm}@media print{body{margin:0}.em-screen{display:none!important}thead{display:table-header-group}tfoot{display:table-row-group}tr{break-inside:avoid}}`;d.head.append(style);
+      const controls=emElement(d,"div",null,d.body);controls.className="em-screen";
+      const print=emElement(d,"button","Chop etish / PDF saqlash",controls);print.onclick=()=>{w.focus();w.print();};
+      const close=emElement(d,"button","Hisobga qaytish",controls);close.onclick=()=>w.close();
+      emElement(d,"h1","Eco Mebel — umumiy oylik hisobot",d.body);emNotes(d,data,d.body);emTable(d,data,d.body);
+      emElement(d,"p","Ichki hisob. PDF saqlash brauzerning chop etish oynasi orqali bajariladi.",d.body);
+    }catch(error){w.close();status.textContent="PDF oynasi tayyorlanmadi: "+error.message;}
+  };
+  onAuthStateChanged(getAuth(getApp()),()=>{emReset();status.textContent="Hisob o‘zgardi. Hisobotni qayta yangilang.";});
+}
+emInstall();
+if(!document.getElementById("ecoMonthlyAllV1")){
+  const observer=new MutationObserver(()=>{emInstall();if(document.getElementById("ecoMonthlyAllV1"))observer.disconnect();});
+  observer.observe(document.body,{childList:true,subtree:true});
+}
+
+}
+</script>
 </body>
 </html>
