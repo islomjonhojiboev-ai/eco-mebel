@@ -2799,6 +2799,157 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
     }
   });
 })();
+</script> 
+  <!-- Kalendar: to‘liq kun / yarim kun / kelmadi tanlovi -->
+<script type="module">
+import { getApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import {
+  getFirestore, doc, collection, query, where, getDocs,
+  getDocFromServer, runTransaction, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+const menuBox = document.createElement("div");
+menuBox.hidden = true;
+menuBox.style.cssText = "position:fixed;inset:0;z-index:10000;background:#0008;padding:20px;overflow:auto;";
+menuBox.innerHTML = `
+  <div role="dialog" aria-modal="true" aria-labelledby="halfTitle"
+       style="max-width:440px;margin:10vh auto;background:white;color:#1e293b;padding:22px;border-radius:16px;box-shadow:0 12px 40px #0005;">
+    <h3 id="halfTitle" style="margin-top:0;">Kun holatini tanlang</h3>
+    <p id="halfDate"></p>
+    <p id="halfStatus" role="status"></p>
+    <div id="halfChoices" style="display:grid;gap:10px;">
+      <button type="button" data-kind="toliq" style="padding:14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;font:inherit;">To‘liq kun — 100%</button>
+      <button type="button" data-kind="yarim" style="padding:14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font:inherit;">½ kun — 50%</button>
+      <button type="button" data-kind="kelmadi" style="padding:14px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;font:inherit;">Kelmadi — 0 TJS</button>
+    </div>
+    <button type="button" id="halfCancel" style="margin-top:16px;padding:12px;font:inherit;">Bekor qilish</button>
+  </div>`;
+document.body.append(menuBox);
+const el = (id) => document.getElementById(id);
+const ADMIN = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+let selected = null;
+let working = false;
+let requestId = 0;
+let originButton = null;
+const status = (text, bad=false) => {
+  el("halfStatus").textContent = text;
+  el("halfStatus").style.color = bad ? "#b91c1c" : "#164e63";
+};
+const money = (n) => (n / 100).toFixed(2) + " TJS";
+function disableChoices(disabled) {
+  menuBox.querySelectorAll("[data-kind]").forEach(b => b.disabled = disabled);
+}
+function closeMenu() {
+  if (working) return;
+  requestId++;
+  menuBox.hidden = true;
+  selected = null;
+  if (originButton?.isConnected) originButton.focus();
+}
+el("halfCancel").onclick = closeMenu;
+menuBox.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeMenu();
+  if (event.key === "Tab") {
+    const buttons = [...menuBox.querySelectorAll("button:not(:disabled)")];
+    const first = buttons[0], last = buttons[buttons.length-1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+
+// Capture fazasi avvalgi bir bosishda almashtirish amalini to‘xtatadi.
+document.addEventListener("click", async (event) => {
+  const button = event.target instanceof Element
+    ? event.target.closest("#pDays button") : null;
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (working) return;
+
+  const date = (button.title || "").slice(0, 10);
+  const workerId = el("pWorker")?.value;
+  if (!workerId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+  const token = ++requestId;
+  originButton = button;
+  selected = null;
+  menuBox.hidden = false;
+  el("halfDate").textContent = date + " — " +
+    (el("pWorker").selectedOptions[0]?.textContent || "Usta");
+  status("Kunlik haq olinmoqda...");
+  disableChoices(true);
+  el("halfCancel").focus();
+
+  try {
+    const app = getApp();
+    if (getAuth(app).currentUser?.uid !== ADMIN) throw new Error("Admin hisobiga kiring.");
+    const db = getFirestore(app);
+    const ref = doc(db, "ustaDavomat", workerId + "_" + date);
+    const snapshot = await getDocFromServer(ref);
+    let daily = snapshot.exists() && snapshot.data().holat !== "belgilanmagan"
+      ? snapshot.data().kunlikTiyin : null;
+    if (!daily) {
+      const result = await getDocs(query(collection(db, "ustaStavkalari"), where("ustaId", "==", workerId)));
+      const rates = result.docs.map(d => d.data())
+        .filter(r => r.sana <= date).sort((a,b) => b.sana.localeCompare(a.sana));
+      daily = rates[0]?.kunlikTiyin;
+    }
+    if (token !== requestId) return;
+    if (!Number.isSafeInteger(daily) || daily <= 0) throw new Error("Bu sana uchun kunlik stavka topilmadi.");
+    selected = { db, ref, workerId, date, daily, existed:snapshot.exists(),
+      version:snapshot.exists() ? snapshot.data().yangilanganVaqt?.toMillis() : null };
+    const values = {toliq:daily, yarim:Math.round(daily/2), kelmadi:0};
+    const labels = {toliq:"To‘liq kun", yarim:"½ kun", kelmadi:"Kelmadi"};
+    menuBox.querySelectorAll("[data-kind]").forEach(b => {
+      b.textContent = labels[b.dataset.kind] + " — " + money(values[b.dataset.kind]);
+    });
+    status("Kerakli holatni tanlang. Tanlanganda saqlanadi.");
+    disableChoices(false);
+    menuBox.querySelector('[data-kind="toliq"]').focus();
+  } catch (error) {
+    if (token === requestId) status(error.message || String(error), true);
+  }
+}, true);
+
+menuBox.querySelectorAll("[data-kind]").forEach(button => {
+  button.onclick = async () => {
+    if (!selected || working) return;
+    const current = selected;
+    const kind = button.dataset.kind;
+    const total = kind === "toliq" ? current.daily : kind === "yarim" ? Math.round(current.daily/2) : 0;
+    working = true;
+    disableChoices(true);
+    el("halfCancel").disabled = true;
+    status("Saqlanmoqda...");
+    try {
+      if (getAuth().currentUser?.uid !== ADMIN) throw new Error("Admin hisobiga kiring.");
+      await runTransaction(current.db, async tx => {
+        const snapshot = await tx.get(current.ref);
+        if (snapshot.exists() !== current.existed ||
+          (snapshot.exists() && snapshot.data().yangilanganVaqt?.toMillis() !== current.version)) {
+          throw new Error("Davomat boshqa oynada o‘zgargan. Menyuni yopib qayta oching.");
+        }
+        tx.set(current.ref, {
+          ustaId:current.workerId, sana:current.date, holat:kind,
+          kunlikTiyin:current.daily, haqTiyin:total,
+          izoh:"Kalendar menyusi: " + kind,
+          userId:ADMIN, yangilanganVaqt:serverTimestamp()
+        });
+      });
+      working = false;
+      closeMenu();
+      const refresh = el("pRefresh");
+      if (refresh && !refresh.disabled) refresh.click();
+    } catch (error) {
+      status(error.message || String(error), true);
+      // Noaniq tarmoq xatosidan keyin qayta bosib yozmaslik uchun menyuni qayta ochish kerak.
+      selected = null;
+    } finally {
+      working = false;
+      el("halfCancel").disabled = false;
+    }
+  };
+});
 </script>  
 </body>
 </html>
