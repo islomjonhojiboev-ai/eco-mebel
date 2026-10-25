@@ -1841,7 +1841,7 @@ const bugungiSana =
 let bugungiXarajatHisob = 0;
 
 for (const x of xarajatlar) {
-  if (x.sana !== bugungiSana) continue;
+  if (x.bekorQilingan === true || x.sana !== bugungiSana) continue;
 
   const h = Number.isSafeInteger(x.summaHisob)
     ? x.summaHisob
@@ -1881,7 +1881,7 @@ window.kunlikPulFarqiniYangila();
       ? xarajat.summaHisob
       : Math.round(Number(xarajat.summa || 0) * 100);
 
-    if (Number.isFinite(hisob)) {
+    if (xarajat.bekorQilingan !== true && Number.isFinite(hisob)) {
       jamiHisob += hisob;
     }
 
@@ -1912,6 +1912,16 @@ window.kunlikPulFarqiniYangila();
       " | Summa: " + summa + " TJS";
 
     karta.append(sarlavha, tafsilot);
+    if (xarajat.bekorQilingan === true) {
+      karta.style.background = "#f1f5f9";
+      tafsilot.style.textDecoration = "line-through";
+      const audit = document.createElement("p");
+      audit.style.color = "#b91c1c";
+      const vaqt = xarajat.bekorVaqti?.toDate?.();
+      audit.textContent = "BEKOR QILINGAN — jamiga kirmaydi. Sabab: " + (xarajat.bekorSababi || "—") +
+        " | UID: " + (xarajat.bekorUid || "—") + " | Vaqt: " + (vaqt ? vaqt.toLocaleString("uz-UZ") : "—");
+      karta.append(audit);
+    }
 
     if (xarajat.izoh) {
       const izoh = document.createElement("p");
@@ -1924,7 +1934,7 @@ window.kunlikPulFarqiniYangila();
 
   xarajatHolatElementi.textContent =
     "Xarajatlar: " + xarajatlar.length +
-    " ta | Jami: " +
+    " ta (bekor qilinganlar bilan) | Faol xarajatlar jami: " +
     (jamiHisob / 100).toFixed(2) + " TJS";
 },
 
@@ -2481,7 +2491,7 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
       <label>Summa (TJS) <input type="number" min="0.01" step="0.01" id="pPayAmount"></label><br><br>
       <label>Izoh <input type="text" maxlength="1000" id="pPayNote"></label>
       <button type="button" id="pPaySave">Pul berilganini saqlash</button>
-      <p>Faqat haqiqatda berilgan pulni kiriting. Yangi to‘lovlar umumiy Xarajatlarga ham avtomatik yoziladi. Shu pulni Xarajatlarga qaytadan kiritmang. Bugungi to‘lov bugungi xarajatga, oldingi sana o‘sha sana hisobiga kiradi. Eski to‘lovlar avtomatik ko‘chirilmaydi.</p>
+      <p>Faqat haqiqatda berilgan pulni kiriting. Yangi to‘lov umumiy Xarajatlarga ham avtomatik yoziladi. Uni yana qo‘lda xarajatga kiritmang. Xato yozuvni Berilgan pullar tarixidan sabab yozib bekor qiling. Eski bog‘lanmagan to‘lovlar avtomatik bekor qilinmaydi.</p>
     </details>
     <details><summary>💰 Kunlik haqni belgilash / o‘zgartirish</summary>
       <label>Hisob boshlanishi / yangi stavka sanasi <input type="date" id="pRateDate"></label><br><br>
@@ -2539,7 +2549,24 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
     const id=pe("pWorker").value;
     pe("pRateHistory").replaceChildren(); pe("pPayHistory").replaceChildren();
     for(const r of pdata.rates.filter(x=>x.ustaId===id).sort((a,b)=>b.sana.localeCompare(a.sana))) rowText(pe("pRateHistory"), r.sana+" dan: "+money(r.kunlikTiyin)+" / kun — "+r.izoh);
-    for(const p of pdata.payments.filter(x=>x.ustaId===id).sort((a,b)=>b.sana.localeCompare(a.sana))) { rowText(pe("pPayHistory"), p.sana+": "+money(p.summaTiyin)+" — "+p.izoh); pe("pPayHistory").lastChild.style.color="#b91c1c"; }
+    for(const p of pdata.payments.filter(x=>x.ustaId===id).sort((a,b)=>b.sana.localeCompare(a.sana))) {
+      const card=document.createElement("div");card.style.cssText="border:1px solid #cbd5e1;border-radius:8px;padding:12px;margin:10px 0";
+      rowText(card,p.sana+": "+money(p.summaTiyin)+" — "+(p.izoh||""));
+      if(p.bekorQilingan===true){
+        card.style.background="#f1f5f9";
+        card.firstChild.style.textDecoration="line-through";
+        rowText(card,"BEKOR QILINGAN — hisobga kirmaydi");card.lastChild.style.color="#b91c1c";
+        rowText(card,"Sabab: "+(p.bekorSababi||"—"));
+        const t=p.bekorVaqti?.toDate?.();
+        rowText(card,"Bekor qilgan UID: "+(p.bekorUid||"—")+" | Vaqt: "+(t?t.toLocaleString("uz-UZ"):"—"));
+      }else{
+        card.firstChild.style.color="#b91c1c";
+        const button=document.createElement("button");button.type="button";button.textContent="Bekor qilish";
+        button.style.cssText="background:#dc2626;color:white;border:0;border-radius:8px;padding:10px 14px;font:inherit;cursor:pointer";
+        button.onclick=()=>act(()=>pCancelClick(p));card.append(button);
+      }
+      pe("pPayHistory").append(card);
+    }
   }
   
   function datesBetween(first,last) {
@@ -2578,7 +2605,7 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
     }
     let paid=0;
     for(const p of pdata.payments.filter(p=>p.ustaId===id)){
-      if(p.sana>localDate())continue;
+      if(p.bekorQilingan===true||p.sana>localDate())continue;
       if(p.sana.slice(0,7)<month)before-=p.summaTiyin;
       else if(p.sana.startsWith(month+"-"))paid+=p.summaTiyin;
     }
@@ -2661,72 +2688,89 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
     pe("pRateAmount").value="";await load();say("Yangi stavka saqlandi. Oldingi davomat qayta hisoblanmadi.");
   });
   
-  // Har bir to‘lov uchun doimiy xarajat IDsi: usta_tolov_<tolovId>.
   async function pWriteLinkedPayment(entry) {
     assertAdmin();
     const payRef=doc(db,"ustaTolovlari",entry.id);
     const expenseRef=doc(db,"xarajatlar","usta_tolov_"+entry.id);
     await runTransaction(db,async tx=>{
-      const pay=await tx.get(payRef);
-      const expense=await tx.get(expenseRef);
+      const pay=await tx.get(payRef),expense=await tx.get(expenseRef);
       if(pay.exists()||expense.exists()) {
-        if(!pay.exists()||!expense.exists())throw new Error("To‘lov va xarajat mos emas. Qayta pul kiritmang; yozuvlarni tekshirish kerak.");
+        if(!pay.exists()||!expense.exists())throw new Error("To‘lov va xarajat mos emas. Yangi to‘lov kiritmang.");
         const p=pay.data(),x=expense.data();
         if(p.ustaId!==entry.workerId||p.sana!==entry.date||p.summaTiyin!==entry.amount||p.userId!==PADMIN||x.sana!==entry.date||x.summaHisob!==entry.amount||x.turi!=="ish_haqi"||x.userId!==PADMIN)throw new Error("Saqlangan yozuvlar ushbu to‘lovga mos emas.");
+        if(p.bekorQilingan===true||x.bekorQilingan===true)throw new Error("Bu to‘lov bekor qilingan. Tarixni tekshiring; qayta saqlanmadi.");
         return;
       }
       const worker=await tx.get(doc(db,"ustalar",entry.workerId));
-      if(!worker.exists())throw new Error("Usta topilmadi. Pul qayta kiritilmasin; ustalar ro‘yxatini tekshiring.");
-      const marker="Usta to‘lovi ID: "+entry.id;
-      tx.set(payRef,{
-        ustaId:entry.workerId,sana:entry.date,summaTiyin:entry.amount,
-        izoh:entry.note,userId:PADMIN,yaratilganVaqt:serverTimestamp()
-      });
+      if(!worker.exists())throw new Error("Usta topilmadi.");
+      tx.set(payRef,{ustaId:entry.workerId,sana:entry.date,summaTiyin:entry.amount,izoh:entry.note,userId:PADMIN,yaratilganVaqt:serverTimestamp()});
       tx.set(expenseRef,{
-        nom:("Usta ish haqi / avans — "+worker.data().ism).slice(0,150),
-        turi:"ish_haqi",summa:entry.amount/100,summaHisob:entry.amount,
-        sana:entry.date,izoh:marker+(entry.note?" | "+entry.note.slice(0,900):""),
+        nom:("Usta ish haqi / avans — "+worker.data().ism).slice(0,150),turi:"ish_haqi",
+        summa:entry.amount/100,summaHisob:entry.amount,sana:entry.date,
+        izoh:"Usta to‘lovi ID: "+entry.id+(entry.note?" | "+entry.note.slice(0,900):""),
         pulBirligi:"TJS",userId:PADMIN,yaratilganVaqt:serverTimestamp()
       });
     });
   }
   const pPendingKey="eco-mebel-pending-linked-payment-v1-"+PADMIN;
   function pReadPending() {
-    const raw=localStorage.getItem(pPendingKey);
-    if(!raw)return null;
+    const raw=localStorage.getItem(pPendingKey);if(!raw)return null;
     const e=JSON.parse(raw);
     if(e.uid!==PADMIN||typeof e.id!=="string"||!/^\w+$/.test(e.id)||typeof e.workerId!=="string"||!validDate(e.date)||!Number.isSafeInteger(e.amount)||e.amount<=0||e.amount>100000000||typeof e.note!=="string"||typeof e.name!=="string")throw new Error("Kutilayotgan to‘lov yozuvi buzilgan. Yangi to‘lov kiritmang.");
     return e;
   }
-  try {
-    if(localStorage.getItem(pPendingKey))pe("pPaySave").textContent="Kutilayotgan to‘lovni tekshirish / yakunlash";
-  } catch(_) {}
+  try {if(localStorage.getItem(pPendingKey))pe("pPaySave").textContent="Kutilayotgan to‘lovni tekshirish / yakunlash";}catch(_){}
   pe("pPaySave").onclick=()=>act(async()=>{
     let entry=pReadPending();
-    if(!entry) {
+    if(!entry){
       const w=selectedWorker(),date=pe("pPayDate").value,n=amount(pe("pPayAmount").value);
       if(!validDate(date)||date>localDate())throw new Error("To‘lov sanasini tekshiring.");
-      if(!confirm(w.ism+"ga "+date+" kuni "+money(n)+" berilganini saqlaysizmi?\nUstalar hisobi va umumiy Xarajatlarga birga yoziladi.\nBu pulni Xarajatlarga yana qo‘lda kiritmang."))return;
+      if(!confirm(w.ism+"ga "+date+" kuni "+money(n)+" berilganini saqlaysizmi?\nUstalar hisobi va umumiy Xarajatlarga birga yoziladi.\nXarajatlarga yana qo‘lda kiritmang."))return;
       entry={uid:PADMIN,id:doc(collection(db,"ustaTolovlari")).id,workerId:w.id,name:w.ism,date,amount:n,note:pe("pPayNote").value.trim()};
-      // Saqlash noaniq tugasa ham shu ID bilan qayta tekshiriladi.
       localStorage.setItem(pPendingKey,JSON.stringify(entry));
       if(localStorage.getItem(pPendingKey)!==JSON.stringify(entry))throw new Error("Qayta urinish himoyasi saqlanmadi. To‘lov yuborilmadi.");
-    } else {
-      if(!confirm("Oldingi to‘lovni tekshirish / yakunlash:\n"+entry.name+"\n"+entry.date+" — "+money(entry.amount)+"\nBu yangi to‘lov yaratmaydi. Davom etasizmi?"))return;
-    }
+    }else if(!confirm("Oldingi to‘lovni tekshirish / yakunlash:\n"+entry.name+"\n"+entry.date+" — "+money(entry.amount)+"\nBu yangi to‘lov yaratmaydi. Davom etasizmi?"))return;
     pe("pPaySave").textContent="Kutilayotgan to‘lovni tekshirish / yakunlash";
-    try {
-      await pWriteLinkedPayment(entry);
-    } catch(error) {
-      throw new Error((error.message||String(error))+" To‘lov holati aniqlanmadi. Yangi to‘lov kiritmang, shu tugma orqali oldingi to‘lovni tekshiring. Brauzer ma’lumotlarini hozircha tozalamang.");
-    }
+    try{await pWriteLinkedPayment(entry);}catch(error){throw new Error((error.message||String(error))+" Holatni tekshirish uchun Yangilashni bosing. To‘lov faol bo‘lsa shu tugma bilan oldingi amalni yakunlang. Yangi to‘lov kiritmang, brauzer ma’lumotlarini tozalamang.");}
     localStorage.removeItem(pPendingKey);
-    pe("pPaySave").textContent="Pul berilganini saqlash";
-    pe("pPayAmount").value="";pe("pPayNote").value="";
-    say("To‘lov va ish haqi xarajati saqlandi. Qo‘lda takror kiritmang.");
-    try {await load();say("To‘lov va ish haqi xarajati saqlandi. Qo‘lda takror kiritmang.");}
-    catch(error){say("To‘lov SAQLANDI, ammo ro‘yxatni yangilashda xato: "+(error.message||String(error))+". Pulni qayta kiritmang; Yangilashni bosing.",true);}
+    pe("pPaySave").textContent="Pul berilganini saqlash";pe("pPayAmount").value="";pe("pPayNote").value="";
+    try{await load();say("To‘lov va ish haqi xarajati saqlandi. Qo‘lda takror kiritmang.");}
+    catch(error){say("To‘lov SAQLANDI. Ro‘yxat yangilanmadi: "+(error.message||String(error))+". Qayta pul kiritmang; Yangilashni bosing.",true);}
   });
+  async function pCancelLinkedPayment(expected,reason) {
+    assertAdmin();reason=String(reason).trim();
+    if(reason.length<3||reason.length>500)throw new Error("Bekor qilish sababi 3–500 belgi bo‘lsin.");
+    const payRef=doc(db,"ustaTolovlari",expected.id),expenseId="usta_tolov_"+expected.id;
+    const expenseRef=doc(db,"xarajatlar",expenseId);
+    await runTransaction(db,async tx=>{
+      const ps=await tx.get(payRef),xs=await tx.get(expenseRef);
+      if(!ps.exists())throw new Error("To‘lov topilmadi. Yangilang.");
+      if(!xs.exists())throw new Error("Bu to‘lovga avtomatik bog‘langan xarajat topilmadi. Hech narsa o‘zgartirilmadi. Eski yoki qo‘lda kiritilgan xarajatni tekshirish kerak.");
+      const p=ps.data(),x=xs.data();
+      if(p.ustaId!==expected.ustaId||p.sana!==expected.sana||p.summaTiyin!==expected.summaTiyin||p.userId!==PADMIN||x.userId!==PADMIN||x.turi!=="ish_haqi"||x.pulBirligi!=="TJS"||x.sana!==p.sana||x.summaHisob!==p.summaTiyin||Math.round(x.summa*100)!==p.summaTiyin||!String(x.izoh||"").startsWith("Usta to‘lovi ID: "+expected.id))throw new Error("To‘lov va xarajat mos emas. Hech narsa o‘zgartirilmadi. Yangilab tekshiring.");
+      if(p.bekorQilingan===true||x.bekorQilingan===true){
+        if(p.bekorQilingan===true&&x.bekorQilingan===true&&p.bekorXarajatId===expenseId&&x.bekorTolovId===expected.id)return;
+        throw new Error("Bekor qilish holatlari mos emas. Yozuvlarni tekshirish kerak.");
+      }
+      tx.update(payRef,{bekorQilingan:true,bekorSababi:reason,bekorVaqti:serverTimestamp(),bekorUid:PADMIN,bekorXarajatId:expenseId});
+      tx.update(expenseRef,{bekorQilingan:true,bekorSababi:reason,bekorVaqti:serverTimestamp(),bekorUid:PADMIN,bekorTolovId:expected.id});
+    });
+  }
+  async function pCancelClick(payment){
+    const name=pdata.workers.find(w=>w.id===payment.ustaId)?.ism||payment.ustaId;
+    const reason=prompt(name+"\n"+payment.sana+" — "+money(payment.summaTiyin)+"\nBekor qilish sababini yozing (3–500 belgi):","");
+    if(reason===null)return;
+    if(reason.trim().length<3||reason.trim().length>500)throw new Error("Sabab 3–500 belgi bo‘lsin.");
+    if(!confirm("TO‘LOVNI BEKOR QILISH\nUsta: "+name+"\nSana: "+payment.sana+"\nSumma: "+money(payment.summaTiyin)+"\nSabab: "+reason.trim()+"\nTo‘lov va bog‘langan xarajat hisobdan birga chiqariladi. Tarix o‘chmaydi. Davom etasizmi?"))return;
+    try{await pCancelLinkedPayment(payment,reason);}
+    catch(error){throw new Error((error.message||String(error))+" Avval Yangilashni bosing va tarixni tekshiring. Bekor bo‘lmagan bo‘lsa shu yozuvni qayta bekor qilish mumkin; yangi to‘lov kiritmang.");}
+    // Oldingi yuborish tasdig‘i yo‘qolgan bo‘lsa, bekor qilingan IDni qayta yubormang.
+    let storageWarning="";
+    try{if(pReadPending()?.id===payment.id){localStorage.removeItem(pPendingKey);pe("pPaySave").textContent="Pul berilganini saqlash";}}
+    catch(_){storageWarning=" Brauzerdagi kutilayotgan yozuvni tekshirish kerak.";}
+    try{await load();say("To‘lov va bog‘langan xarajat bekor qilindi. Tarix saqlandi."+storageWarning);}
+    catch(error){say("Bekor qilish SAQLANDI. Ro‘yxat yangilanmadi; Yangilashni bosing."+storageWarning,true);}
+  }
   async function transfer(removeOnly) {
     const zid=pe("pOrder").value,oldId=pe("pOldWorker").value,newId=pe("pNewWorker").value;
     if(!zid||!oldId||(!removeOnly&&!newId))throw new Error("Zakaz va ustalarni tanlang.");
