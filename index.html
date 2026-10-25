@@ -2443,7 +2443,212 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
       xabar.textContent = "Siz tizimdan chiqdingiz.";
       xabar.style.color = "blue";
     });
-  </script>
+  
+// Davomat va kunlik ish haqi: alohida boshqaruv paneli.
+{
+  const PADMIN = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+  const pe = (id) => document.getElementById(id);
+  const money = (n) => (n / 100).toFixed(2) + " TJS";
+  const localDate = () => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  };
+  let pdata = {workers:[], rates:[], days:[], payments:[], orders:[]};
+  let busy = false;
+  const panel = document.createElement("section");
+  panel.id = "payrollPanel";
+  panel.hidden = true;
+  panel.innerHTML = `
+    <button type="button" class="boshgaQaytish" id="pBack">← Bosh sahifa</button>
+    <h2>Davomat va ustalar hisobi</h2>
+    <p>Kunlik haq davomatdan hisoblanadi. Zakazlar soni ish haqiga ta’sir qilmaydi.</p>
+    <button type="button" id="pRefresh">Ma’lumotlarni yangilash</button>
+    <p id="pStatus" role="status"></p>
+    <h3>1. Kunlik stavka</h3>
+    <label>Usta <select id="pWorker"></select></label><br><br>
+    <label>Qaysi sanadan <input type="date" id="pRateDate"></label><br><br>
+    <label>Kunlik haq (TJS) <input type="number" min="0.01" step="0.01" id="pRateAmount"></label><br><br>
+    <label>Izoh <input type="text" maxlength="1000" id="pRateNote"></label>
+    <button type="button" id="pRateSave">Yangi stavkani saqlash</button>
+    <p>Bir sanaga saqlangan stavka almashtirilmaydi. Yangi stavka uchun boshqa boshlanish sanasini tanlang. Oldingi davomat o‘z holicha qoladi.</p>
+    <div id="pRateHistory"></div>
+    <h3>2. Kunlik davomat</h3>
+    <label>Sana <input type="date" id="pDayDate"></label>
+    <button type="button" id="pDayShow">Shu sanani ko‘rsatish</button>
+    <p>Har bir qator alohida saqlanadi. Belgilanmagan kun kelmagan kun deb hisoblanmaydi.</p>
+    <div id="pDays" style="overflow-x:auto"></div>
+    <h3>3. Hisob va berilgan pullar</h3>
+    <label>Hisob oyi <input type="month" id="pMonth"></label>
+    <button type="button" id="pReportShow">Hisobni ko‘rsatish</button>
+    <div id="pReport"></div>
+    <h4>Ustaga pul berish</h4>
+    <p>Yuqorida tanlangan ustaga yoziladi. Bu yozuv hozircha umumiy Xarajatlar va kunlik pul farqiga avtomatik kirmaydi. Uni umumiy xarajatga ham kiritsangiz, ustalar hisobiga qayta kiritmang.</p>
+    <label>To‘lov sanasi <input type="date" id="pPayDate"></label><br><br>
+    <label>Berilgan summa (TJS) <input type="number" min="0.01" step="0.01" id="pPayAmount"></label><br><br>
+    <label>Izoh <input type="text" maxlength="1000" id="pPayNote" placeholder="Ish haqi yoki avans"></label>
+    <button type="button" id="pPaySave">Pul berilganini qayd etish</button>
+    <p>To‘lovni ikki marta kiritmang. Saqlangan to‘lov bu versiyada tahrirlanmaydi va o‘chirilmaydi.</p>
+    <div id="pPayHistory"></div>
+    <h3>4. Zakazni ustadan olish / boshqa ustaga berish</h3>
+    <label>Zakaz <select id="pOrder"></select></label><br><br>
+    <label>Hozirgi usta <select id="pOldWorker"></select></label><br><br>
+    <label>Yangi usta <select id="pNewWorker"></select></label><br><br>
+    <button type="button" id="pUnassign">Biriktirishni bekor qilish</button>
+    <button type="button" id="pTransfer">Boshqa ustaga berish</button>
+    <p>Bu amallar davomat, ish haqi va berilgan pullarni o‘zgartirmaydi. Tugallangan yoki arxivdagi zakazlar bu yerda o‘zgartirilmaydi.</p>
+  `;
+  asosiySahifa.insertBefore(panel, document.getElementById("logoutBtn"));
+  const navBtn = document.createElement("button");
+  navBtn.type = "button";
+  navBtn.dataset.bolim = "payroll";
+  navBtn.textContent = "📅 Davomat va ish haqi";
+  boshSahifaMenyusi.appendChild(navBtn);
+  const oldOpen = bolimniOch;
+  bolimniOch = function(name) { oldOpen(name); panel.hidden = name !== "payroll"; };
+  const say = (msg, error=false) => { pe("pStatus").textContent=msg; pe("pStatus").style.color=error?"#b91c1c":"#164e63"; };
+  const assertAdmin = () => { if(auth.currentUser?.uid!==PADMIN) throw new Error("Admin hisobiga kiring."); };
+  const validDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(new Date(v+"T12:00:00").getTime());
+  const amount = (v) => {
+    if(!/^\d+(?:[.,]\d{1,2})?$/.test(v.trim())) throw new Error("Summani ko‘pi bilan ikki kasr xonasi bilan kiriting.");
+    const n=Math.round(Number(v.replace(",","."))*100);
+    if(!Number.isSafeInteger(n)||n<=0||n>100000000) throw new Error("Summa 0 dan katta va 1 000 000 TJSdan oshmasin.");
+    return n;
+  };
+  const selectedWorker = () => {
+    const w=pdata.workers.find(x=>x.id===pe("pWorker").value);
+    if(!w) throw new Error("Ustani tanlang."); return w;
+  };
+  function options(el, rows, placeholder) {
+    const prev=el.value; el.replaceChildren();
+    const first=document.createElement("option"); first.value=""; first.textContent=placeholder; el.append(first);
+    for(const [value,label] of rows) { const o=document.createElement("option");o.value=value;o.textContent=label;el.append(o); }
+    if(rows.some(r=>r[0]===prev)) el.value=prev;
+  }
+  function rateAt(id,date) { return pdata.rates.filter(x=>x.ustaId===id&&x.sana<=date).sort((a,b)=>b.sana.localeCompare(a.sana))[0]; }
+  const rowText=(root,text)=>{const p=document.createElement("p");p.textContent=text;root.append(p);};
+  function histories() {
+    const id=pe("pWorker").value;
+    pe("pRateHistory").replaceChildren(); pe("pPayHistory").replaceChildren();
+    for(const r of pdata.rates.filter(x=>x.ustaId===id).sort((a,b)=>b.sana.localeCompare(a.sana))) rowText(pe("pRateHistory"), r.sana+" dan: "+money(r.kunlikTiyin)+" / kun — "+r.izoh);
+    for(const p of pdata.payments.filter(x=>x.ustaId===id).sort((a,b)=>b.sana.localeCompare(a.sana))) rowText(pe("pPayHistory"), p.sana+": "+money(p.summaTiyin)+" — "+p.izoh);
+  }
+  function report() {
+    const month=pe("pMonth").value, root=pe("pReport");root.replaceChildren();
+    if(!/^\d{4}-\d{2}$/.test(month)) return;
+    const ids=new Set([...pdata.workers.map(w=>w.id),...pdata.days.map(d=>d.ustaId),...pdata.payments.map(p=>p.ustaId)]);
+    for(const id of ids) {
+      const w=pdata.workers.find(x=>x.id===id);
+      const days=pdata.days.filter(x=>x.ustaId===id), pays=pdata.payments.filter(x=>x.ustaId===id);
+      const sum=(a,key)=>a.reduce((n,x)=>n+x[key],0);
+      const before=sum(days.filter(x=>x.sana.slice(0,7)<month),"haqTiyin")-sum(pays.filter(x=>x.sana.slice(0,7)<month),"summaTiyin");
+      const current=days.filter(x=>x.sana.startsWith(month+"-"));
+      const earned=sum(current,"haqTiyin"), paid=sum(pays.filter(x=>x.sana.startsWith(month+"-")),"summaTiyin");
+      const balance=before+earned-paid;
+      rowText(root,(w?w.ism:"O‘chirilgan usta: "+id)+" | To‘liq: "+current.filter(x=>x.holat==="toliq").length+" kun | Yarim: "+current.filter(x=>x.holat==="yarim").length+" kun | Oldingi qoldiq: "+money(before)+" | Shu oy haqi: "+money(earned)+" | Berildi: "+money(paid)+" | "+(balance<0?"Ortiqcha avans: ":"Qoldiq: ")+money(Math.abs(balance)));
+    }
+    rowText(root,"Hisob faqat ushbu yangi bo‘limda saqlangan davomat va to‘lovlarga asoslanadi. Eski qarzlar va oldingi Xarajatlar yozuvlari avtomatik import qilinmaydi.");
+  }
+  function daysRender() {
+    const root=pe("pDays"),date=pe("pDayDate").value; root.replaceChildren(); if(!validDate(date))return;
+    for(const w of pdata.workers) {
+      const saved=pdata.days.find(x=>x.ustaId===w.id&&x.sana===date),rate=rateAt(w.id,date);
+      if(w.faol!==true&&!saved)continue;
+      const box=document.createElement("div");box.style.cssText="padding:12px;border:1px solid #cbd5e1;margin:8px 0;border-radius:8px";
+      rowText(box,w.ism+" | "+(saved?"Saqlangan stavka: "+money(saved.kunlikTiyin):rate?"Stavka: "+money(rate.kunlikTiyin):"Bu sana uchun stavka yo‘q"));
+      const select=document.createElement("select");options(select,[["belgilanmagan","Belgilanmagan"],["toliq","To‘liq kun"],["yarim","Yarim kun"],["kelmadi","Kelmadi"]],"Holatni tanlang");select.value=saved?saved.holat:"belgilanmagan";
+      const note=document.createElement("input");note.type="text";note.maxLength=1000;note.placeholder="Izoh; tuzatishda sababini yozing";note.value=saved?saved.izoh:"";
+      const btn=document.createElement("button");btn.type="button";btn.textContent=saved?"Davomatni tuzatish":"Davomatni saqlash";
+      btn.addEventListener("click",()=>act(async()=>{
+        if(date>localDate())throw new Error("Kelajak sana uchun davomat kiritilmaydi.");
+        if(!select.value)throw new Error("Holatni tanlang.");
+        if(saved&&!note.value.trim())throw new Error("Tuzatish sababini izohga yozing.");
+        const daily=saved?saved.kunlikTiyin:rate?.kunlikTiyin;
+        if(!daily)throw new Error("Avval shu sana uchun kunlik stavka kiriting.");
+        const earned=select.value==="toliq"?daily:select.value==="yarim"?Math.round(daily/2):0;
+        if(!confirm(w.ism+" — "+date+"\nHisob: "+money(earned)+"\nSaqlansinmi?"))return;
+        const ref=doc(db,"ustaDavomat",w.id+"_"+date);
+        await runTransaction(db,async tx=>{
+          const snap=await tx.get(ref);
+          if(snap.exists()&&(!saved||snap.data().yangilanganVaqt?.toMillis()!==saved.yangilanganVaqt?.toMillis()))throw new Error("Davomat boshqa oynada o‘zgardi. Yangilang.");
+          if(!snap.exists()&&saved)throw new Error("Yozuv o‘zgardi. Yangilang.");
+          tx.set(ref,{ustaId:w.id,sana:date,holat:select.value,kunlikTiyin:daily,haqTiyin:earned,izoh:note.value.trim(),userId:PADMIN,yangilanganVaqt:serverTimestamp()});
+        });
+        await load();say("Davomat saqlandi.");
+      }));
+      box.append(select,note,btn);root.append(box);
+    }
+  }
+  function orderWorkers() {
+    const z=pdata.orders.find(x=>x.id===pe("pOrder").value);
+    const ids=Array.isArray(z?.ustaIds)?z.ustaIds:[];
+    options(pe("pOldWorker"),ids.map(id=>[id,pdata.workers.find(w=>w.id===id)?.ism||z.ustaBiriktirishlar?.[id]?.ism||id]),"Hozirgi ustani tanlang");
+  }
+  async function load() {
+    assertAdmin();say("Yuklanmoqda...");
+    const cols=["ustalar","ustaStavkalari","ustaDavomat","ustaTolovlari","zakazlar"];
+    const snapshots=await Promise.all(cols.map(c=>getDocs(collection(db,c))));assertAdmin();
+    const arrays=snapshots.map(s=>s.docs.map(d=>({...d.data(),id:d.id})));
+    [pdata.workers,pdata.rates,pdata.days,pdata.payments,pdata.orders]=arrays;
+    pdata.workers.sort((a,b)=>String(a.ism).localeCompare(String(b.ism)));
+    options(pe("pWorker"),pdata.workers.map(w=>[w.id,w.ism]),"Ustani tanlang");
+    options(pe("pNewWorker"),pdata.workers.filter(w=>w.faol===true).map(w=>[w.id,w.ism]),"Yangi ustani tanlang");
+    options(pe("pOrder"),pdata.orders.filter(z=>z.arxivlangan!==true&&z.arxiv!==true&&!["topshirildi","topshirilgan","bekor","bekor_qilindi"].includes(z.holat)).sort((a,b)=>(b.zakazRaqami||0)-(a.zakazRaqami||0)).map(z=>[z.id,"№"+z.zakazRaqami+" — "+(z.ism||"—")]),"Zakazni tanlang");
+    histories();daysRender();report();orderWorkers();say("Ma’lumotlar yangilandi.");
+  }
+  async function act(fn) {
+    if(busy)return;busy=true;
+    const buttons=[...panel.querySelectorAll("button")];buttons.forEach(b=>b.disabled=true);
+    try {assertAdmin();await fn();}catch(e){say(e.message||e.code||String(e),true);}finally{busy=false;buttons.forEach(b=>b.disabled=false);}
+  }
+  pe("pRateSave").onclick=()=>act(async()=>{
+    const w=selectedWorker(),date=pe("pRateDate").value,n=amount(pe("pRateAmount").value);
+    if(!validDate(date))throw new Error("Boshlanish sanasini tanlang.");
+    if(!confirm(w.ism+" uchun "+date+" dan "+money(n)+" / kun?\nSaqlangan oldingi davomat o‘zgarmaydi."))return;
+    const ref=doc(db,"ustaStavkalari",w.id+"_"+date);
+    await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(snap.exists())throw new Error("Bu sanaga stavka mavjud. Yangi boshlanish sanasini tanlang.");tx.set(ref,{ustaId:w.id,sana:date,kunlikTiyin:n,izoh:pe("pRateNote").value.trim(),userId:PADMIN,yaratilganVaqt:serverTimestamp()});});
+    pe("pRateAmount").value="";await load();say("Yangi stavka saqlandi. Oldingi davomat qayta hisoblanmadi.");
+  });
+  pe("pPaySave").onclick=()=>act(async()=>{
+    const w=selectedWorker(),date=pe("pPayDate").value,n=amount(pe("pPayAmount").value);
+    if(!validDate(date)||date>localDate())throw new Error("To‘lov sanasini tekshiring.");
+    if(!confirm(w.ism+"ga "+date+" kuni "+money(n)+" berilganini qayd etasizmi?\nBu yozuvni tahrirlash tugmasi hozircha yo‘q."))return;
+    const ref=doc(collection(db,"ustaTolovlari"));
+    await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(snap.exists())throw new Error("To‘lov avval saqlangan.");tx.set(ref,{ustaId:w.id,sana:date,summaTiyin:n,izoh:pe("pPayNote").value.trim(),userId:PADMIN,yaratilganVaqt:serverTimestamp()});});
+    pe("pPayAmount").value="";pe("pPayNote").value="";await load();say("To‘lov qayd etildi. Umumiy xarajatga avtomatik yozilmadi.");
+  });
+  async function transfer(removeOnly) {
+    const zid=pe("pOrder").value,oldId=pe("pOldWorker").value,newId=pe("pNewWorker").value;
+    if(!zid||!oldId||(!removeOnly&&!newId))throw new Error("Zakaz va ustalarni tanlang.");
+    if(!removeOnly&&oldId===newId)throw new Error("Boshqa ustani tanlang.");
+    const z=pdata.orders.find(x=>x.id===zid);
+    const oldName=pdata.workers.find(w=>w.id===oldId)?.ism||z?.ustaBiriktirishlar?.[oldId]?.ism||oldId;
+    const newName=pdata.workers.find(w=>w.id===newId)?.ism||"—";
+    if(!confirm("Zakaz №"+z.zakazRaqami+"\nMijoz: "+(z.ism||"—")+"\nHozirgi usta: "+oldName+(removeOnly?"\nBiriktirish bekor qilinsinmi?":"\nYangi usta: "+newName+"\nO‘tkazilsinmi?")+"\nDavomat va pul hisobi o‘zgarmaydi."))return;
+    await runTransaction(db,async tx=>{
+      const ref=doc(db,"zakazlar",zid),snap=await tx.get(ref);
+      let nw=null;if(!removeOnly)nw=await tx.get(doc(db,"ustalar",newId));
+      if(!snap.exists())throw new Error("Zakaz topilmadi.");
+      const d=snap.data();
+      if(d.arxivlangan===true||d.arxiv===true||["topshirildi","topshirilgan","bekor","bekor_qilindi"].includes(d.holat))throw new Error("Tugallangan yoki arxivdagi zakazni o‘zgartirib bo‘lmaydi.");
+      if(!Array.isArray(d.ustaIds)||!d.ustaIds.includes(oldId))throw new Error("Biriktirish o‘zgargan. Yangilang.");
+      const ids=d.ustaIds.filter(id=>id!==oldId),links={...(d.ustaBiriktirishlar||{})};delete links[oldId];
+      if(!removeOnly){if(!nw.exists()||nw.data().faol!==true)throw new Error("Yangi usta faol emas.");if(ids.includes(newId))throw new Error("Yangi usta bu zakazga allaqachon biriktirilgan.");ids.push(newId);links[newId]={ism:nw.data().ism,kasb:nw.data().kasb,biriktirilganVaqt:serverTimestamp(),biriktirganUid:PADMIN};}
+      const history=Array.isArray(d.ustaOtkazishTarixi)?[...d.ustaOtkazishTarixi]:[];
+      history.push({oldUstaId:oldId,oldIsm:oldName,newUstaId:removeOnly?null:newId,newIsm:removeOnly?null:newName,vaqt:new Date().toISOString(),userId:PADMIN});
+      tx.update(ref,{ustaIds:ids,ustaBiriktirishlar:links,ustaOtkazishTarixi:history});
+    });
+    await load();say(removeOnly?"Biriktirish bekor qilindi.":"Zakaz boshqa ustaga o‘tkazildi.");
+  }
+  pe("pTransfer").onclick=()=>act(()=>transfer(false));pe("pUnassign").onclick=()=>act(()=>transfer(true));
+  pe("pOrder").onchange=orderWorkers;pe("pWorker").onchange=histories;
+  pe("pRefresh").onclick=()=>act(load);pe("pDayShow").onclick=daysRender;pe("pReportShow").onclick=report;
+  pe("pBack").onclick=()=>bolimniOch("bosh");
+  navBtn.onclick=()=>{bolimniOch("payroll");act(load);};
+  for(const id of ["pRateDate","pDayDate","pPayDate"])pe(id).value=localDate();pe("pMonth").value=localDate().slice(0,7);
+  onAuthStateChanged(auth,()=>{pdata={workers:[],rates:[],days:[],payments:[],orders:[]};panel.hidden=true;pe("pDays").replaceChildren();pe("pReport").replaceChildren();pe("pRateHistory").replaceChildren();pe("pPayHistory").replaceChildren();});
+}
+
+</script>
   <!-- Sayt kodining zaxira nusxasi -->
 <div style="margin-top:24px;padding:16px;border-top:1px solid #cbd5e1;">
   <button
