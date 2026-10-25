@@ -2951,5 +2951,77 @@ menuBox.querySelectorAll("[data-kind]").forEach(button => {
   };
 });
 </script>  
+<style>
+  #ustalarBolimi .usta-olish-qizil,
+  #pUnassign {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border: 1px solid #b91c1c !important;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  #ustalarBolimi .usta-berish-kok,
+  #pTransfer {
+    background: #087f9c !important;
+    color: #ffffff !important;
+    border: 1px solid #06677f !important;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  #ustalarBolimi .usta-olish-qizil:hover,
+  #pUnassign:hover {
+    background: #b91c1c !important;
+  }
+
+  #ustalarBolimi .usta-berish-kok:hover,
+  #pTransfer:hover {
+    background: #06677f !important;
+  }
+
+  #ustalarBolimi .usta-olish-qizil:disabled,
+  #ustalarBolimi .usta-berish-kok:disabled,
+  #pUnassign:disabled,
+  #pTransfer:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+</style>
+
+<script>
+(() => {
+  const bolim = document.getElementById("ustalarBolimi");
+  if (!bolim) return;
+
+  function tugmalarniRangla() {
+    bolim.querySelectorAll("button").forEach((tugma) => {
+      const matn = tugma.textContent.trim();
+
+      if (matn === "Ustadan olish") {
+        tugma.classList.add("usta-olish-qizil");
+      }
+
+      if (matn === "Boshqa ustaga berish") {
+        tugma.classList.add("usta-berish-kok");
+      }
+    });
+  }
+
+  tugmalarniRangla();
+
+  const kuzatuvchi = new MutationObserver(tugmalarniRangla);
+
+  kuzatuvchi.observe(bolim, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+})();
+</script>
 </body>
 </html>
