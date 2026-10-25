@@ -3126,5 +3126,111 @@ menuBox.querySelectorAll("[data-kind]").forEach(button => {
   });
 })();
 </script>
+<!-- Eco Mebel: bu blokni index.html ichida </body> dan OLDIN bir marta qo‘shing. -->
+<script>
+(() => {
+  "use strict";
+  if (window.ecoPayrollPdfV1) return;
+  window.ecoPayrollPdfV1 = true;
+  const byId = id => document.getElementById(id);
+  const clean = value => String(value || "").replace(/\s+/g, " ").trim();
+
+  function collectReport() {
+    const worker = byId("pWorker");
+    const month = byId("pMonth")?.value;
+    const report = byId("pReport");
+    if (!worker?.value) throw new Error("Avval ustani tanlang.");
+    if (!/^\d{4}-\d{2}$/.test(month || "")) throw new Error("Hisobot oyini tanlang.");
+    const summary = [...(report?.children || [])].map(p => clean(p.textContent)).filter(Boolean);
+    if (!summary.some(text => text.startsWith("Shu oy hisoblangan haq:")) ||
+        !summary.some(text => text.startsWith("Shu oy berilgan summa:"))) {
+      throw new Error("Hisobot hali tayyor emas. Yangilashni bosing va hisob chiqqach qayta urining.");
+    }
+    const payments = [...(byId("pPayHistory")?.children || [])].filter(card => {
+      const first = card.tagName === "P" ? card.textContent : card.firstElementChild?.textContent;
+      return clean(first).startsWith(month + "-");
+    }).map(card => {
+      const parts = card.tagName === "P" ? [clean(card.textContent)] :
+        [...card.children].filter(el => el.tagName !== "BUTTON").map(el => clean(el.textContent)).filter(Boolean);
+      return { parts, cancelled: parts.some(text => text.includes("BEKOR QILINGAN")) };
+    });
+    return {
+      worker: clean(worker.selectedOptions[0]?.textContent), month, summary, payments,
+      generated: new Date().toLocaleString("uz-UZ")
+    };
+  }
+
+  function renderReport(target, data) {
+    const d = target.document;
+    d.documentElement.lang = "uz";
+    d.head.replaceChildren(); d.body.replaceChildren();
+    d.title = "Eco Mebel — " + data.worker + " — " + data.month;
+    const meta = d.createElement("meta"); meta.setAttribute("charset", "UTF-8");
+    const viewport = d.createElement("meta"); viewport.name = "viewport"; viewport.content = "width=device-width, initial-scale=1";
+    const style = d.createElement("style");
+    style.textContent = `
+      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:28px;line-height:1.5}
+      h1{font-size:25px;margin:0;color:#164e63}h2{font-size:19px;margin-top:24px}
+      p{overflow-wrap:anywhere}.muted{color:#64748b;font-size:13px}.summary{border:1px solid #cbd5e1;padding:14px;border-radius:8px}
+      .payment{border:1px solid #cbd5e1;padding:10px;margin:10px 0;break-inside:avoid}
+      .payment p{margin:5px 0}.cancelled{border-color:#94a3b8}.cancelled p:first-child{text-decoration:line-through}
+      .screen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+      button{padding:12px 18px;border:0;border-radius:8px;background:#087f9c;color:white;font:inherit;cursor:pointer}
+      @page{size:A4;margin:14mm}@media print{body{margin:0;font-size:11px}.screen,.screen-note{display:none!important}h1{font-size:21px}h2{break-after:avoid}.summary{break-inside:avoid}}
+    `;
+    d.head.append(meta, viewport, style);
+    const add = (tag, text, parent=d.body, cls="") => {
+      const el=d.createElement(tag); if(text!==null) el.textContent=text;
+      if(cls) el.className=cls; parent.append(el); return el;
+    };
+    const controls=add("div",null,d.body,"screen");
+    const print=add("button","Chop etish / PDF saqlash",controls);print.type="button";
+    print.onclick=()=>{target.focus();target.print();};
+    const close=add("button","Hisobga qaytish",controls);close.type="button";
+    close.style.background="#475569";close.onclick=()=>target.close();
+    add("p","PDF saqlash chop etish oynasi orqali bajariladi; imkoniyatlar brauzer va qurilmaga bog‘liq.",d.body,"screen-note muted");
+    add("h1","Eco Mebel");add("h2","Davomat va ish haqi hisoboti");
+    add("p","Usta: "+data.worker);add("p","Hisobot oyi: "+data.month);
+    const summary=add("div",null,d.body,"summary");
+    data.summary.forEach(text=>add("p",text,summary));
+    add("h2","Tanlangan oydagi to‘lovlar tarixi");
+    if(!data.payments.length)add("p","Bu oy uchun to‘lov yozuvi ko‘rsatilmagan.");
+    data.payments.forEach(payment=>{
+      const card=add("div",null,d.body,"payment"+(payment.cancelled?" cancelled":""));
+      payment.parts.forEach(text=>add("p",text,card));
+    });
+    add("p","Bekor qilingan to‘lovlar tarix uchun ko‘rsatiladi; yangi bekor qilish funksiyasi o‘rnatilgan bo‘lsa, ular faol to‘lovlar jamiga kiritilmaydi.",d.body,"muted");
+    add("p","Tayyorlangan vaqt: "+data.generated,d.body,"muted");
+    add("p","Ichki hisobot. Summalar TJS (somoniy)da. Hisobot ochish paytida panelda ko‘rsatilgan ma’lumotlarning nusxasi; bazani mustaqil qayta hisoblamaydi. Eng so‘nggi ma’lumot uchun avval Yangilashni bosing.",d.body,"muted");
+    print.focus();
+  }
+
+  function install() {
+    const report=byId("pReport");
+    if(!report || byId("ecoPayrollPdfBtn"))return;
+    const button=document.createElement("button");
+    button.id="ecoPayrollPdfBtn";button.type="button";button.textContent="PDF hisobot";
+    button.style.cssText="background:#7c3aed;color:#fff;border:0;border-radius:8px;padding:12px 18px;margin:8px 0 16px;font:inherit;cursor:pointer";
+    const notice=document.createElement("p");notice.id="ecoPayrollPdfStatus";notice.setAttribute("role","status");
+    report.after(button,notice);
+    button.onclick=()=>{
+      notice.textContent="";
+      let data;
+      try{data=collectReport();}catch(error){notice.style.color="#b91c1c";notice.textContent=error.message;return;}
+      const target=window.open("","_blank");
+      if(!target){notice.style.color="#b91c1c";notice.textContent="Hisobot oynasi ochilmadi. Ushbu sayt uchun yangi oynalarni ochishga ruxsat bering.";return;}
+      try{
+        target.opener=null;renderReport(target,data);
+        notice.style.color="#164e63";notice.textContent="Hisobot yangi oynada ochildi. Undagi Chop etish / PDF saqlash tugmasini bosing.";
+      }catch(error){target.close();notice.style.color="#b91c1c";notice.textContent="Hisobot tayyorlanmadi: "+error.message;}
+    };
+  }
+  install();
+  if(!byId("ecoPayrollPdfBtn")){
+    const observer=new MutationObserver(()=>{install();if(byId("ecoPayrollPdfBtn"))observer.disconnect();});
+    observer.observe(document.body,{childList:true,subtree:true});
+  }
+})();
+</script>
 </body>
 </html>
