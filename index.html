@@ -460,6 +460,12 @@
   <input id="telefon" type="tel" placeholder="Telefon raqamingiz" required>
   <br><br>
 
+  <label for="zakazManzili">Mijoz manzili</label><br>
+  <textarea id="zakazManzili" maxlength="500" placeholder="Shahar, ko‘cha, uy va mo‘ljal (ixtiyoriy)"></textarea>
+  <br><br>
+  <label for="zakazLokatsiya">Lokatsiya / xarita havolasi</label><br>
+  <input id="zakazLokatsiya" type="url" maxlength="2048" placeholder="https://… (ixtiyoriy)">
+  <p style="font-size:13px;color:#64748b">Xaritadagi joyning ulashish havolasini kiriting. Qurilma joylashuvi avtomatik olinmaydi.</p>
   <textarea id="mebel" placeholder="Qanday mebel kerak?" required></textarea>
   <br><br>
 
@@ -693,7 +699,7 @@
 
   <script type="module">
     
-import { getFirestore, collection, addDoc, serverTimestamp, doc, runTransaction, onSnapshot, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, serverTimestamp, doc, runTransaction, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, getDocFromServer } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
@@ -754,6 +760,7 @@ xarajatXabar.textContent = "Xarajat saqlandi!";
     
     const zakazForm = document.getElementById("zakazForm"); const zakazXabar = document.getElementById("zakazXabar"); const zakazTugma = zakazForm.querySelector('button[type="submit"]');
 zakazForm.addEventListener("submit", async (event) => { event.preventDefault();
+if (zakazTugma.disabled) return;
 const user = auth.currentUser;
 if (!user) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Avval dasturga kiring."; return; }
 const ism = document.getElementById("ism").value.trim(); const telefon = document.getElementById("telefon").value.trim(); const mebel = document.getElementById("mebel").value.trim(); const olcham = document.getElementById("olcham").value.trim(); const izoh = document.getElementById("izoh").value.trim();const narxMatni =
@@ -764,6 +771,13 @@ const avansMatni =
 
 const topshirishSanasi =
   document.getElementById("topshirishSanasi").value;
+
+let joy;
+try {
+  joy = ecoOrderPlace(document.getElementById("zakazManzili").value, document.getElementById("zakazLokatsiya").value);
+} catch (error) {
+  zakazXabar.style.color = "red"; zakazXabar.textContent = error.message; return;
+}
 
 const narx = narxMatni === "" ? null : Number(narxMatni);
 const avans = avansMatni === "" ? 0 : Number(avansMatni);
@@ -835,6 +849,7 @@ transaction.set(hisoblagichRef, {
 });
 
 transaction.set(yangiZakazRef, {
+  ...(joy.manzil || joy.lokatsiyaUrl ? joy : {}),
   zakazRaqami: yangiRaqam,
   ism: ism,
   telefon: telefon,
@@ -858,7 +873,139 @@ zakazXabar.style.color = "green"; zakazXabar.textContent = "Zakaz saqlandi! Zaka
 zakazForm.reset(); } catch (error) { zakazXabar.style.color = "red"; zakazXabar.textContent = "Zakaz saqlanmadi. Xatolik: " + (error.code || error.message); } finally { zakazTugma.disabled = false; } });
 
   
-    const loginSection = document.getElementById("loginSection");
+    
+// Manzil va lokatsiya: matn sifatida chiqariladi, HTML bajarilmaydi.
+function ecoOrderPlace(address, link) {
+  const manzil=String(address||"").trim(),raw=String(link||"").trim();
+  if(manzil.length>500)throw new Error("Manzil 500 belgidan oshmasin.");
+  if(raw.length>2048)throw new Error("Lokatsiya havolasi juda uzun (2048 belgidan oshmasin).");
+  if(!raw)return {manzil,lokatsiyaUrl:""};
+  let u;try{u=new URL(raw);}catch(_){throw new Error("Lokatsiyani https:// bilan boshlanadigan to‘liq havola qilib kiriting.");}
+  if(u.protocol!=="https:"||u.username||u.password)throw new Error("Lokatsiya faqat login/parolsiz https:// havola bo‘lsin.");
+  // Havolaning haqiqatan xarita joyi ekanligi avtomatik tekshirilmaydi.
+  return {manzil,lokatsiyaUrl:u.href};
+}
+function ecoOrderWorkerNames(order){
+  const ids=Array.isArray(order.ustaIds)?order.ustaIds:[];
+  return ids.map(id=>{
+    const link=order.ustaBiriktirishlar?.[id];
+    const jobs={olchovchi:"O‘lchovchi",dizayner:"Dizayner",kesuvchi:"Kesuvchi",yiguvchi:"Yig‘uvchi",ornatuvchi:"O‘rnatuvchi"};
+    return (link?.ism||("Usta ID: "+id))+(link?.kasb?" — "+(jobs[link.kasb]||link.kasb):"");
+  }).join("; ")||"Usta biriktirilmagan";
+}
+async function ecoSaveOrderPlace(id,expected,next){
+  const admin="xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+  if(auth.currentUser?.uid!==admin)throw new Error("Admin hisobiga kiring.");
+  const values=ecoOrderPlace(next.manzil,next.lokatsiyaUrl);
+  await runTransaction(db,async tx=>{
+    const ref=doc(db,"zakazlar",id),snap=await tx.get(ref);
+    if(auth.currentUser?.uid!==admin)throw new Error("Hisob o‘zgardi.");
+    if(!snap.exists())throw new Error("Zakaz topilmadi.");
+    const current=snap.data();
+    const currentAddress=String(current.manzil||""),currentLink=String(current.lokatsiyaUrl||"");
+    if(currentAddress===values.manzil&&currentLink===values.lokatsiyaUrl)return;
+    if(currentAddress!==String(expected.manzil||"")||currentLink!==String(expected.lokatsiyaUrl||""))throw new Error("Manzil boshqa oynada o‘zgargan. Kartani yopib qayta oching.");
+    tx.update(ref,{...values,manzilYangilanganUid:admin,manzilYangilanganVaqt:serverTimestamp()});
+  });
+}
+const ecoDetail=document.createElement("dialog");ecoDetail.id="ecoOrderDetail";
+ecoDetail.setAttribute("aria-labelledby","ecoOrderDetailTitle");
+ecoDetail.style.cssText="width:min(900px,94vw);max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:14px;padding:20px;color:#1e293b;background:white";
+document.body.append(ecoDetail);
+const ecoDetailStyle=document.createElement("style");ecoDetailStyle.textContent=`#ecoOrderDetail::backdrop{background:#0008}#ecoOrderDetail button{padding:11px 15px;margin:5px 5px 5px 0;border:0;border-radius:8px;background:#087f9c;color:white;font:inherit;cursor:pointer}#ecoOrderDetail button:disabled{opacity:.5;cursor:wait}#ecoOrderDetail input,#ecoOrderDetail textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}#ecoOrderDetail td,#ecoOrderDetail th{white-space:pre-wrap;overflow-wrap:anywhere}#ecoOrderDetail a{overflow-wrap:anywhere}#ecoOrderDetail .eco-detail-status{color:#164e63}`;
+document.head.append(ecoDetailStyle);
+let ecoDetailToken=0,ecoDetailSaving=false,ecoDetailOrigin=null;
+function ecoD(tag,text,parent=ecoDetail){const e=document.createElement(tag);if(text!=null)e.textContent=String(text);parent.append(e);return e;}
+function ecoDetailClose(){if(ecoDetailSaving)return;ecoDetailToken++;ecoDetail.close();ecoDetail.replaceChildren();if(ecoDetailOrigin?.isConnected)ecoDetailOrigin.focus();}
+ecoDetail.addEventListener("cancel",event=>{event.preventDefault();ecoDetailClose();});
+function ecoDetailDraw(id,z,token){
+  ecoDetail.replaceChildren();
+  const title=ecoD("h2","Zakaz №"+(z.zakazRaqami??"—"));title.id="ecoOrderDetailTitle";
+  const close=ecoD("button","Yopish / ro‘yxatga qaytish");close.type="button";close.style.background="#475569";close.onclick=ecoDetailClose;
+  const refresh=ecoD("button","Kartani yangilash");refresh.type="button";refresh.onclick=()=>ecoOpenOrderDetail(id,ecoDetailOrigin);
+  ecoD("p","Kartani ochishda serverdan olingan ma’lumot. Keyingi o‘zgarishlarni ko‘rish uchun yangilang.");
+  const status=ecoD("p","");status.className="eco-detail-status";status.setAttribute("role","status");
+  const table=ecoD("table",null);table.style.cssText="width:100%;border-collapse:collapse";
+  const rows=document.createElement("tbody");table.append(rows);
+  const labels={yangi:"Yangi",ishlab_chiqarishda:"Ishlab chiqarishda",tayyor:"Tayyor",topshirildi:"Topshirildi",topshirilgan:"Topshirildi",bekor:"Bekor qilindi",bekor_qilindi:"Bekor qilindi"};
+  const cash=v=>v==null||!Number.isFinite(Number(v))?"Kiritilmagan":Number(v).toFixed(2)+" TJS";
+  const balance=zakazQarzi(z);
+  const values=[
+    ["Mijoz",z.ism||"—"],["Telefon",z.telefon||"—"],["Mebel",z.mebel||"—"],
+    ["O‘lcham",z.olcham||"—"],["Izoh",z.izoh||"—"],["Holat",labels[z.holat]||z.holat||"Yangi"],
+    ["Arxiv",z.arxivlangan===true||z.arxiv===true?"Ha":"Yo‘q"],
+    ["Yaratilgan sana",z.yaratilganVaqt?.toDate?.().toLocaleString("uz-UZ")||"—"],
+    ["Topshirish sanasi",z.topshirishSanasi||"Kiritilmagan"],
+    ["Narx",cash(z.narx)],["Jami to‘langan (saqlangan)",cash(z.avans)],
+    ["Qoldiq (saqlangan)",cash(z.qolganSumma)],["Biriktirilgan ustalar",ecoOrderWorkerNames(z)],
+    ["Manzil",z.manzil||"Kiritilmagan"]
+  ];
+  for(const [label,value] of values){const tr=ecoD("tr",null,rows);ecoD("th",label,tr);ecoD("td",value,tr);}
+  if(balance&&Math.round(Number(z.avans||0)*100)!==balance.tolanganTiyin){
+    const warning=ecoD("p","Diqqat: saqlangan avans va to‘lovlar tarixi bo‘yicha jami mos emas. Kartadagi manzilni saqlash pul hisobini o‘zgartirmaydi.");warning.style.color="#b91c1c";
+  }
+  if(z.lokatsiyaUrl){
+    try{const safe=ecoOrderPlace("",z.lokatsiyaUrl).lokatsiyaUrl;
+      const a=ecoD("a","Lokatsiya havolasini ochish");a.href=safe;a.target="_blank";a.rel="noopener noreferrer";
+    }catch(_){ecoD("p","Saqlangan lokatsiya xavfsiz https:// havola emas; ochish o‘chirildi.").style.color="#b91c1c";}
+  }
+  ecoD("h3","Manzil / lokatsiyani kiritish yoki tuzatish");
+  const form=ecoD("form",null);
+  const addressLabel=ecoD("label","Manzil (ixtiyoriy, 500 belgigacha)",form),address=ecoD("textarea",null,addressLabel);address.maxLength=500;address.value=z.manzil||"";
+  const urlLabel=ecoD("label","Lokatsiya havolasi (ixtiyoriy, https://)",form),url=ecoD("input",null,urlLabel);url.type="url";url.maxLength=2048;url.value=z.lokatsiyaUrl||"";
+  const save=ecoD("button","Manzil va lokatsiyani saqlash",form);save.type="submit";
+  ecoD("p","Faqat shu ikkita maydon yangilanadi. Summa, to‘lov, davomat, material va usta biriktirishlari o‘zgarmaydi.",form);
+  form.onsubmit=async event=>{
+    event.preventDefault();if(ecoDetailSaving)return;
+    let next;try{next=ecoOrderPlace(address.value,url.value);}catch(error){status.textContent=error.message;status.style.color="#b91c1c";return;}
+    if(!confirm("Zakaz №"+(z.zakazRaqami??id)+" — "+(z.ism||"—")+"\nManzil: "+(next.manzil||"(bo‘sh)")+"\nLokatsiya: "+(next.lokatsiyaUrl||"(bo‘sh)")+"\nBo‘sh maydon avvalgi qiymatni olib tashlaydi. Saqlaysizmi?"))return;
+    ecoDetailSaving=true;save.disabled=close.disabled=refresh.disabled=true;address.disabled=url.disabled=true;status.textContent="Saqlanmoqda...";
+    let saved=false;
+    try{await ecoSaveOrderPlace(id,z,next);saved=true;}
+    catch(error){status.style.color="#b91c1c";status.textContent="Saqlash tasdiqlanmadi: "+(error.message||error.code)+". Kartani yangilab tekshiring; zakazni qayta yaratmang.";}
+    finally{ecoDetailSaving=false;save.disabled=close.disabled=refresh.disabled=false;address.disabled=url.disabled=false;}
+    if(saved&&token===ecoDetailToken&&auth.currentUser?.uid==="xtD3NXgcHcbKRWx9WTclzNXMn4S2"){
+      await ecoOpenOrderDetail(id,ecoDetailOrigin,"Manzil va lokatsiya SAQLANDI.");
+    }
+  };
+  ecoD("h3","Saqlangan materiallar hisobi");
+  const materials=Array.isArray(z.materialHisobi?.qatorlar)?z.materialHisobi.qatorlar:[];
+  if(!materials.length)ecoD("p","Material hisobi hali saqlanmagan.");
+  else{
+    const wrap=ecoD("div",null);wrap.style.overflowX="auto";
+    const mt=ecoD("table",null,wrap);mt.style.cssText="width:100%;border-collapse:collapse";
+    const head=ecoD("tr",null,ecoD("thead",null,mt));["Material","Birlik","Miqdor","Narx","Summa"].forEach(v=>ecoD("th",v,head));
+    const body=ecoD("tbody",null,mt);
+    for(const m of materials){const tr=ecoD("tr",null,body);[m.nom||"—",m.birlik||"—",m.miqdor??"—",cash(m.narx),cash(m.summaHisob==null?null:m.summaHisob/100)].forEach(v=>ecoD("td",v,tr));}
+    ecoD("p","Material jami: "+cash(z.materialHisobi.jamiHisob==null?null:z.materialHisobi.jamiHisob/100));
+  }
+  ecoD("p","Bu bosqichga rasm/chizma fayl yuklash kiritilmagan.");close.focus();
+}
+async function ecoOpenOrderDetail(id,origin,successMessage=""){
+  if(ecoDetailSaving)return;
+  const token=++ecoDetailToken;ecoDetailOrigin=origin;
+  try{
+    if(auth.currentUser?.uid!=="xtD3NXgcHcbKRWx9WTclzNXMn4S2")throw new Error("Admin hisobiga kiring.");
+    ecoDetail.replaceChildren();const heading=ecoD("h2","Zakaz yuklanmoqda...");heading.id="ecoOrderDetailTitle";
+    const close=ecoD("button","Yopish");close.type="button";close.onclick=ecoDetailClose;
+    if(!ecoDetail.open)ecoDetail.showModal();
+    const snap=await getDocFromServer(doc(db,"zakazlar",id));
+    if(token!==ecoDetailToken||!ecoDetail.open)return;
+    if(auth.currentUser?.uid!=="xtD3NXgcHcbKRWx9WTclzNXMn4S2")return;
+    if(!snap.exists())throw new Error("Zakaz topilmadi.");
+    ecoDetailDraw(id,snap.data(),token);
+    if(successMessage)ecoDetail.querySelector(".eco-detail-status").textContent=successMessage;
+  }catch(error){
+    if(token!==ecoDetailToken)return;
+    ecoDetail.replaceChildren();const h=ecoD("h2","Zakaz kartasi");h.id="ecoOrderDetailTitle";
+    ecoD("p",(successMessage?successMessage+" Lekin karta yangilanmadi. ":"")+(error.message||error.code));
+    const close=ecoD("button","Yopish");close.type="button";close.onclick=ecoDetailClose;
+    if(!ecoDetail.open)alert(error.message||String(error));
+  }
+}
+onAuthStateChanged(auth,()=>{ecoDetailToken++;ecoDetail.close();ecoDetail.replaceChildren();});
+
+const loginSection = document.getElementById("loginSection");
     const asosiySahifa = document.getElementById("asosiySahifa");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
@@ -2342,6 +2489,10 @@ arxivTugma.addEventListener("click", async () => {
   }
 });
 
+const detailButton=document.createElement("button");detailButton.type="button";detailButton.textContent="Batafsil";
+detailButton.style.cssText="background:#087f9c;color:white;border:0;border-radius:8px;padding:10px 14px;margin:4px;font:inherit;cursor:pointer";
+detailButton.onclick=()=>ecoOpenOrderDetail(zakaz.id,detailButton);
+amalKatagi.appendChild(detailButton);
 amalKatagi.appendChild(arxivTugma);
 const materialTugma = document.createElement("button"); materialTugma.type = "button"; materialTugma.textContent = "Materiallar"; materialTugma.title = "Shu zakaz uchun material hisobini tayyorlash"; materialTugma.style.cssText = "border:0;background:transparent;" + "color:#15803d;text-decoration:underline;" + "cursor:pointer;font:inherit;padding:8px;";
 materialTugma.addEventListener("click", () => { if (!Number.isSafeInteger(zakaz.zakazRaqami) || zakaz.zakazRaqami < 1) { alert("Bu zakazning raqami yo‘q yoki noto‘g‘ri."); return; }
@@ -2400,7 +2551,7 @@ qaytishTugma.addEventListener("click", () => {
 });
 element( "p", "PDF saqlash imkoniyati brauzer va qurilmaga bog‘liq.", hujjat.body, "ekran izoh" );
 const malumotJadvali = element("table", null, hujjat.body); const malumotTanasi = element("tbody", null, malumotJadvali);
-const tafsilotlar = [ ["Zakaz raqami", raqam], ["Mijoz", zakaz.ism ?? "—"], ["Telefon", zakaz.telefon ?? "—"], ["Mebel", zakaz.mebel ?? "—"], ["O‘lcham", zakaz.olcham ?? "—"], ["Izoh", zakaz.izoh ?? "—"], [ "Holat", holatNomlari[zakaz.holat] ?? zakaz.holat ?? "—" ], ["Yaratilgan sana", sana], ["Topshirish sanasi", zakaz.topshirishSanasi || "—"], ["Zakaz narxi", pul(zakaz.narx)], ["Jami to‘langan", pul(zakaz.avans)], ["Qoldiq", pul(zakaz.qolganSumma)] ];
+const tafsilotlar = [ ["Zakaz raqami", raqam], ["Mijoz", zakaz.ism ?? "—"], ["Telefon", zakaz.telefon ?? "—"], ["Manzil", zakaz.manzil || "Kiritilmagan"], ["Lokatsiya havolasi", zakaz.lokatsiyaUrl || "Kiritilmagan"], ["Biriktirilgan ustalar", ecoOrderWorkerNames(zakaz)], ["Mebel", zakaz.mebel ?? "—"], ["O‘lcham", zakaz.olcham ?? "—"], ["Izoh", zakaz.izoh ?? "—"], [ "Holat", holatNomlari[zakaz.holat] ?? zakaz.holat ?? "—" ], ["Yaratilgan sana", sana], ["Topshirish sanasi", zakaz.topshirishSanasi || "—"], ["Zakaz narxi", pul(zakaz.narx)], ["Jami to‘langan", pul(zakaz.avans)], ["Qoldiq", pul(zakaz.qolganSumma)] ];
 for (const [nom, qiymat] of tafsilotlar) { const tr = element("tr", null, malumotTanasi); element("th", nom, tr); element("td", qiymat, tr); }
 element("h2", "Materiallar hisobi", hujjat.body);
 const hisob = zakaz.materialHisobi; const materialQatorlari = Array.isArray(hisob?.qatorlar) ? hisob.qatorlar : [];
