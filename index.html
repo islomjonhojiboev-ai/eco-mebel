@@ -3544,5 +3544,120 @@ if(!document.getElementById("ecoMonthlyAllV1")){
 
 }
 </script>
+<!-- GPS qo‘shimchasi: manzil/Batafsil qo‘shilgan index.html ichida </body> dan oldin BIR MARTA qo‘shing. -->
+<script type="module">
+
+import {getApp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+if(!window.ecoOrderGpsInstalledV1){
+window.ecoOrderGpsInstalledV1=true;
+const GPS_ADMIN="xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+const gpsAuth=getAuth(getApp());
+const gpsInputs=new WeakSet(),gpsActive=new Set();
+
+function ecoGpsValue(position) {
+  const c=position?.coords,lat=c?.latitude,lon=c?.longitude,accuracy=c?.accuracy;
+  if(typeof lat!=="number"||!Number.isFinite(lat)||lat < -90||lat > 90||
+     typeof lon!=="number"||!Number.isFinite(lon)||lon < -180||lon > 180||
+     typeof accuracy!=="number"||!Number.isFinite(accuracy)||accuracy<0) {
+    throw new Error("Qurilma to‘g‘ri koordinata yoki aniqlik qaytarmadi. Qayta urinib ko‘ring.");
+  }
+  const latitude=lat.toFixed(7),longitude=lon.toFixed(7);
+  return {latitude,longitude,accuracy:Math.ceil(accuracy),
+    url:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(latitude+","+longitude)};
+}
+function ecoGpsError(error) {
+  if(error?.code===1)return "Joylashuvga ruxsat berilmadi. Brauzer/sayt va qurilmaning joylashuv ruxsatlarini tekshiring yoki havolani qo‘lda kiriting.";
+  if(error?.code===2)return "Qurilma hozirgi joylashuvni aniqlay olmadi. Biroz kutib qayta urining yoki xarita havolasini qo‘lda kiriting.";
+  if(error?.code===3)return "20 soniya ichida joylashuv olinmadi. Qayta urining yoki havolani qo‘lda kiriting.";
+  return error?.message||"Joylashuvni olishda xato. Havolani qo‘lda kiritishingiz mumkin.";
+}
+
+function ecoGpsAttach(input) {
+  if(!input||gpsInputs.has(input))return;
+  const form=input.closest("form");if(!form)return;
+  gpsInputs.add(input);
+  const box=document.createElement("div");box.className="eco-order-gps";
+  box.style.cssText="padding:10px 0;margin:6px 0";
+  const button=document.createElement("button");button.type="button";button.textContent="📍 Hozirgi joylashuvni olish";
+  button.style.cssText="background:#15803d;color:#fff;border:0;border-radius:8px;padding:11px 15px;font:inherit;cursor:pointer";
+  const cancel=document.createElement("button");cancel.type="button";cancel.textContent="Olishni bekor qilish";cancel.hidden=true;
+  cancel.style.cssText="background:#475569;color:white;border:0;border-radius:8px;padding:11px 15px;margin:5px;font:inherit;cursor:pointer";
+  const status=document.createElement("p");status.setAttribute("role","status");status.style.cssText="font-size:13px;color:#164e63;margin:8px 0";
+  const preview=document.createElement("a");preview.hidden=true;preview.textContent="Olingan joyni xaritada tekshirish";preview.target="_blank";preview.rel="noopener noreferrer";
+  const note=document.createElement("p");note.style.cssText="font-size:13px;color:#64748b;margin:6px 0";
+  note.textContent="Bu mijoz manzilini emas, qurilmangiz turgan joyni oladi. Mijoznikida turganda foydalaning. Havola faqat tasdiqdan keyin maydonga qo‘yiladi; saqlash alohida bajariladi.";
+  box.append(button,cancel,status,preview,note);
+  const label=input.closest("label");(label&&form.contains(label)?label:input).after(box);
+  let sequence=0,pending=false;
+  const say=(text,bad=false)=>{status.textContent=text;status.style.color=bad?"#b91c1c":"#164e63";};
+  function finish(token){if(token!==sequence)return;pending=false;button.disabled=false;button.textContent="📍 Hozirgi joylashuvni olish";cancel.hidden=true;gpsActive.delete(abort);}
+  function abort(message="Joylashuv olish bekor qilindi. Avvalgi havola o‘zgarmadi."){
+    sequence++;pending=false;button.disabled=false;button.textContent="📍 Hozirgi joylashuvni olish";cancel.hidden=true;gpsActive.delete(abort);say(message);
+  }
+  cancel.onclick=()=>abort();
+  form.addEventListener("submit",event=>{
+    if(!pending)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    say("Joylashuv olinmoqda. Natijani kuting yoki Olishni bekor qilishni bosing, keyin saqlang.",true);
+  },true);
+  form.addEventListener("reset",()=>{abort("");preview.hidden=true;});
+  input.addEventListener("input",()=>{preview.hidden=true;if(pending)abort("Havola qo‘lda o‘zgartirildi. Kutilayotgan GPS natijasi qo‘llanmaydi.");});
+  button.onclick=()=>{
+    if(pending)return;
+    if(gpsAuth.currentUser?.uid!==GPS_ADMIN){say("Admin hisobiga kiring.",true);return;}
+    if(!window.isSecureContext){say("Joylashuv uchun saytning internetdagi HTTPS manzilini oching. Yuklangan HTML faylni qurilmadan ochib tekshirmang.",true);return;}
+    if(!navigator.geolocation){say("Bu brauzerda joylashuv olish mavjud emas. Havolani qo‘lda kiriting.",true);return;}
+    if(input.disabled){say("Avval joriy saqlash amali tugashini kuting.",true);return;}
+    const token=++sequence,previous=input.value;
+    pending=true;gpsActive.add(abort);button.disabled=true;button.textContent="Joylashuv olinmoqda...";cancel.hidden=false;preview.hidden=true;
+    say("Brauzer ruxsat so‘rasa, ruxsat bering. Hozirgi joylashuv olinmoqda...");
+    const valid=()=>token===sequence&&input.isConnected&&box.isConnected&&
+      gpsAuth.currentUser?.uid===GPS_ADMIN&&(!input.closest("dialog")||input.closest("dialog").open);
+    try{
+      navigator.geolocation.getCurrentPosition(position=>{
+        try{
+          if(!valid())return;
+          if(input.disabled||input.value!==previous){say("Maydon yoki saqlash holati o‘zgardi. GPS havolasi qo‘yilmadi; qayta urining.",true);return;}
+          const value=ecoGpsValue(position);
+          const warning=value.accuracy>100?"\nDiqqat: aniqlik past. Joyni xaritada albatta tekshiring.":"";
+          const yes=confirm("HOZIRGI JOYLASHUV\nKenglik: "+value.latitude+"\nUzunlik: "+value.longitude+
+            "\nTaxminiy aniqlik radiusi: "+value.accuracy+" metr"+warning+
+            (previous.trim()?"\nMaydondagi avvalgi lokatsiya havolasi almashtiriladi.":"")+
+            "\nBu qurilmangizning hozirgi joyi. Mijozning kerakli joyimi?\nHavolani lokatsiya maydoniga qo‘yaymi? Bazaga hali saqlanmaydi.");
+          if(!yes){say("Tasdiqlanmadi. Avvalgi havola o‘zgarmadi.");return;}
+          if(!valid()||input.disabled||input.value!==previous)return;
+          input.value=value.url;
+          finish(token);
+          input.dispatchEvent(new Event("input",{bubbles:true}));
+          input.dispatchEvent(new Event("change",{bubbles:true}));
+          preview.href=value.url;preview.hidden=false;
+          say("Lokatsiya maydoniga qo‘yildi. Aniqlik radiusi taxminan "+value.accuracy+" metr. "+
+            (value.accuracy>100?"Aniqlik past — xaritada tekshiring. ":"")+
+            "Bazaga yozish uchun zakazni yoki Manzil va lokatsiyani saqlash tugmasini bosing.");
+        }catch(error){if(valid())say(ecoGpsError(error),true);}
+        finally{finish(token);}
+      },error=>{
+        if(valid())say(ecoGpsError(error),true);
+        finish(token);
+      },{enableHighAccuracy:true,timeout:20000,maximumAge:0});
+    }catch(error){say(ecoGpsError(error),true);finish(token);}
+  };
+}
+function ecoGpsInstall(){
+  ecoGpsAttach(document.getElementById("zakazLokatsiya"));
+  document.querySelectorAll('#ecoOrderDetail form input[type="url"]').forEach(ecoGpsAttach);
+}
+ecoGpsInstall();
+const gpsObserver=new MutationObserver(()=>{
+  ecoGpsInstall();
+});
+gpsObserver.observe(document.body,{childList:true,subtree:true});
+onAuthStateChanged(gpsAuth,()=>{
+  for(const abort of [...gpsActive])abort("Hisob o‘zgardi. Joylashuv natijasi qo‘llanmaydi.");
+  document.querySelectorAll(".eco-order-gps a").forEach(a=>{a.hidden=true;a.removeAttribute("href");});
+});
+}
+</script>
 </body>
 </html>
