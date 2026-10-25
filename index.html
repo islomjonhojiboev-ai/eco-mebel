@@ -2444,5 +2444,96 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
       xabar.style.color = "blue";
     });
   </script>
+  <!-- Sayt kodining zaxira nusxasi -->
+<div style="margin-top:24px;padding:16px;border-top:1px solid #cbd5e1;">
+  <button
+    id="kodZaxiraBtn"
+    type="button"
+    style="padding:12px 18px;border:0;border-radius:8px;
+           background:#475569;color:white;font:inherit;cursor:pointer;">
+    💾 Sayt kodini saqlash
+  </button>
+
+  <p id="kodZaxiraXabar" role="status"></p>
+
+  <p style="font-size:13px;color:#64748b;">
+    Faqat HTML kod saqlanadi. Firebase ma’lumotlari kirmaydi.
+  </p>
+</div>
+
+<script>
+(() => {
+  const tugma = document.getElementById("kodZaxiraBtn");
+  const xabar = document.getElementById("kodZaxiraXabar");
+
+  tugma.addEventListener("click", async () => {
+    tugma.disabled = true;
+    xabar.style.color = "#164e63";
+    xabar.textContent = "Sayt kodi olinmoqda...";
+
+    try {
+      const manzil = new URL(window.location.href);
+      manzil.hash = "";
+      manzil.search = "";
+      manzil.searchParams.set("_zaxira", String(Date.now()));
+
+      const javob = await fetch(manzil.href, {
+        cache: "no-store"
+      });
+
+      if (!javob.ok) {
+        throw new Error("HTML olinmadi. HTTP: " + javob.status);
+      }
+
+      const html = await javob.text();
+
+      if (!/<html[\s>]/i.test(html)) {
+        throw new Error("Olingan javob HTML faylga o‘xshamaydi.");
+      }
+
+      const hozir = new Date();
+      const ikki = (son) => String(son).padStart(2, "0");
+
+      const vaqt =
+        hozir.getFullYear() + "-" +
+        ikki(hozir.getMonth() + 1) + "-" +
+        ikki(hozir.getDate()) + "_" +
+        ikki(hozir.getHours()) + "-" +
+        ikki(hozir.getMinutes()) + "-" +
+        ikki(hozir.getSeconds());
+
+      const fayl = new Blob([html], {
+        type: "text/html;charset=utf-8"
+      });
+
+      const faylUrl = URL.createObjectURL(fayl);
+      const havola = document.createElement("a");
+
+      havola.href = faylUrl;
+      havola.download = "eco-mebel-zaxira-" + vaqt + ".html";
+      havola.style.display = "none";
+
+      document.body.appendChild(havola);
+      havola.click();
+      havola.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(faylUrl);
+      }, 60000);
+
+      xabar.style.color = "green";
+      xabar.textContent =
+        "Yuklab olish so‘rovi yuborildi. " +
+        "Fayl qurilmangizda saqlanganini tekshiring.";
+    } catch (error) {
+      xabar.style.color = "red";
+      xabar.textContent =
+        "Zaxira olinmadi: " + (error.message || String(error));
+    } finally {
+      tugma.disabled = false;
+    }
+  });
+})();
+</script>  
 </body>
 </html>
