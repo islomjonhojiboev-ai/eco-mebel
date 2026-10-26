@@ -3659,5 +3659,165 @@ onAuthStateChanged(gpsAuth,()=>{
 });
 }
 </script>
+<!-- Fayl biriktirish: manzil/Batafsil bor index.html ichida </body> dan OLDIN bir marta qo‘shing. -->
+<script type="module">
+
+import {getApp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import {getFirestore,collection,doc,query,where,limit,getDocsFromServer,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import {getStorage,ref,uploadBytesResumable,deleteObject,getBlob} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
+if(!window.ecoOrderFilesV1){
+window.ecoOrderFilesV1=true;
+const app=getApp(),auth=getAuth(app),db=getFirestore(app),storage=getStorage(app);
+const ADMIN="xtD3NXgcHcbKRWx9WTclzNXMn4S2",activeTasks=new Set();
+const admin=()=>{if(auth.currentUser?.uid!==ADMIN)throw new Error("Admin hisobiga kiring.");};
+const elem=(tag,text,parent)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(parent)parent.append(e);return e;};
+
+function ecoFilePath(orderId,fileId){return "zakazFayllari/"+orderId+"/"+fileId;}
+async function ecoInspectFile(file){
+  if(!file||!Number.isSafeInteger(file.size)||file.size<=0)throw new Error("Bo‘sh fayl tanlanmasin.");
+  if(file.size>50*1024*1024)throw new Error("Fayl 50 MBdan katta.");
+  const bytes=new Uint8Array(await file.slice(0,8).arrayBuffer());
+  let type;
+  if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)type="image/jpeg";
+  else if([137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))type="image/png";
+  else if([37,80,68,70,45].every((v,i)=>bytes[i]===v))type="application/pdf";
+  else throw new Error("Faqat JPG, PNG yoki PDF qabul qilinadi. HEIC, Word va CAD fayllarini avval mos formatga o‘tkazing.");
+  const name=String(file.name||"fayl").replace(/[\u0000-\u001f\u007f]/g,"").slice(0,180)||"fayl";
+  if(type!=="application/pdf"&&file.size>20*1024*1024)throw new Error("Rasm 20 MBdan oshmasin.");
+  const extension=type==="application/pdf"?/\.pdf$/i:type==="image/png"?/\.png$/i:/\.jpe?g$/i;
+  if(!extension.test(name))throw new Error("Fayl nomining kengaytmasi ichki turiga mos emas: "+name);
+  return {nom:name,turi:type,hajm:file.size};
+}
+
+async function ecoReserve(orderId,fileId,info){
+  admin();const record=doc(db,"zakazlar",orderId,"biriktirmalar",fileId);
+  await runTransaction(db,async tx=>{
+    const order=await tx.get(doc(db,"zakazlar",orderId)),old=await tx.get(record);admin();
+    if(!order.exists())throw new Error("Zakaz topilmadi.");
+    if(old.exists())throw new Error("Fayl IDsi band.");
+    tx.set(record,{...info,storagePath:ecoFilePath(orderId,fileId),holat:"yuklanmoqda",userId:ADMIN,
+      yaratilganVaqt:serverTimestamp(),yangilanganVaqt:serverTimestamp(),ochirganUid:"",ochirilganVaqt:null});
+  });return record;
+}
+async function ecoReady(record){
+  await runTransaction(db,async tx=>{
+    const snap=await tx.get(record);admin();
+    if(!snap.exists()||snap.data().holat!=="yuklanmoqda")throw new Error("Fayl holati o‘zgargan. Ro‘yxatni yangilang.");
+    tx.update(record,{holat:"tayyor",yangilanganVaqt:serverTimestamp()});
+  });
+}
+async function ecoRemove(orderId,fileId){
+  admin();const record=doc(db,"zakazlar",orderId,"biriktirmalar",fileId);
+  await runTransaction(db,async tx=>{
+    const snap=await tx.get(record);admin();if(!snap.exists())throw new Error("Fayl yozuvi topilmadi.");
+    const data=snap.data();if(data.holat==="ochirilgan"||data.holat==="ochirilmoqda")return;
+    tx.update(record,{holat:"ochirilmoqda",yangilanganVaqt:serverTimestamp(),ochirganUid:ADMIN,ochirilganVaqt:serverTimestamp()});
+  });
+  try{await deleteObject(ref(storage,ecoFilePath(orderId,fileId)));}
+  catch(error){if(error.code!=="storage/object-not-found")throw error;}
+  await runTransaction(db,async tx=>{
+    const snap=await tx.get(record);admin();if(!snap.exists())throw new Error("Fayl yozuvi topilmadi.");
+    if(snap.data().holat==="ochirilgan")return;
+    if(snap.data().holat!=="ochirilmoqda")throw new Error("Fayl holati mos emas.");
+    tx.update(record,{holat:"ochirilgan",yangilanganVaqt:serverTimestamp()});
+  });
+}
+function ecoInstallAttachments(){
+  const dialog=document.getElementById("ecoOrderDetail");
+  if(!dialog?.open||dialog.querySelector(".eco-files-panel"))return;
+  const title=dialog.querySelector("#ecoOrderDetailTitle")?.textContent||"";
+  const match=/^Zakaz №(\d+)$/.exec(title);if(!match)return;
+  const number=Number(match[1]);if(!Number.isSafeInteger(number)||number<1)return;
+  for(const p of dialog.querySelectorAll("p"))if(p.textContent==="Bu bosqichga rasm/chizma fayl yuklash kiritilmagan.")p.remove();
+  const box=elem("section",null,dialog);box.className="eco-files-panel";box.style.cssText="margin-top:22px;padding-top:14px;border-top:2px solid #cbd5e1";
+  elem("h3","Rasm va PDF biriktirmalari",box);
+  elem("p","JPG/PNG: 20 MBgacha. PDF: 50 MBgacha. Har safar bitta fayl yuklanadi. Rasm sifati avtomatik siqilmaydi.",box);
+  const pick=elem("input",null,box);pick.type="file";pick.accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf";
+  const upload=elem("button","Faylni yuklash",box);upload.type="button";upload.disabled=true;
+  const cancel=elem("button","Yuklashni to‘xtatish",box);cancel.type="button";cancel.hidden=true;
+  const refresh=elem("button","Fayllarni yangilash",box);refresh.type="button";
+  const progress=elem("progress",null,box);progress.max=100;progress.value=0;progress.hidden=true;
+  const status=elem("p","Zakaz aniqlanmoqda...",box);status.setAttribute("role","status");
+  const list=elem("div",null,box);let orderId=null,busy=false,validating=false,task=null,listVersion=0;
+  const alive=()=>box.isConnected&&dialog.open&&auth.currentUser?.uid===ADMIN;
+  const say=(text,bad=false)=>{if(!alive())return;status.textContent=text;status.style.color=bad?"#b91c1c":"#164e63";};
+  async function load(){
+    const version=++listVersion;admin();
+    if(!orderId){
+      const orders=await getDocsFromServer(query(collection(db,"zakazlar"),where("zakazRaqami","==",number),limit(2)));
+      if(orders.size!==1)throw new Error("Zakaz raqami yagona topilmadi. Hech narsa yuklanmadi.");
+      orderId=orders.docs[0].id;
+    }
+    const snaps=await getDocsFromServer(collection(db,"zakazlar",orderId,"biriktirmalar"));
+    if(!alive()||version!==listVersion)return;
+    list.replaceChildren();upload.disabled=busy;
+    const files=snaps.docs.map(d=>({...d.data(),id:d.id})).filter(f=>f.holat!=="ochirilgan");
+    files.sort((a,b)=>(b.yaratilganVaqt?.toMillis?.()||0)-(a.yaratilganVaqt?.toMillis?.()||0));
+    for(const file of files){
+      const card=elem("div",null,list);card.style.cssText="border:1px solid #cbd5e1;padding:12px;border-radius:8px;margin:10px 0";
+      elem("strong",file.nom,card);elem("p",(file.hajm/1024/1024).toFixed(2)+" MB | "+file.turi+" | "+({tayyor:"Tayyor",yuklanmoqda:"Yuklash tugallanmagan",ochirilmoqda:"O‘chirish tugallanmagan"}[file.holat]||file.holat),card);
+      if(file.holat==="tayyor")for(const isView of [true,false]){
+        const b=elem("button",isView?"Ko‘rish / ochish":"Yuklab olish",card);b.type="button";
+        b.onclick=async()=>{
+          let w=null;b.disabled=true;
+          try{
+            admin();if(file.storagePath!==ecoFilePath(orderId,file.id))throw new Error("Fayl yo‘li noto‘g‘ri.");
+            if(isView){w=window.open("","_blank");if(!w)throw new Error("Yangi oyna ochilmadi. Sayt uchun ruxsat bering.");w.opener=null;w.document.body.textContent="Fayl olinmoqda...";}
+            const blob=await getBlob(ref(storage,ecoFilePath(orderId,file.id)),50*1024*1024);
+            admin();if(!alive()){w?.close();return;}
+            const safeBlob=new Blob([blob],{type:file.turi}),url=URL.createObjectURL(safeBlob);
+            if(isView)w.location.replace(url);
+            else{const a=elem("a",null,document.body);a.href=url;a.download=file.nom;a.click();a.remove();}
+            setTimeout(()=>URL.revokeObjectURL(url),300000);
+          }catch(error){w?.close();say("Fayl ochilmadi: "+(error.message||error.code)+". Storage Rules va CORS sozlamalarini tekshiring.",true);}
+          finally{b.disabled=false;}
+        };
+      }
+      const del=elem("button",file.holat==="ochirilmoqda"?"O‘chirishni yakunlash":"Biriktirmani o‘chirish",card);del.type="button";del.style.background="#dc2626";
+      del.onclick=async()=>{
+        if(busy){say("Joriy yuklash tugasin yoki uni to‘xtating.",true);return;}
+        if(!confirm("Zakaz №"+number+"\nFayl: "+file.nom+"\nFayl Storage’dan o‘chadi. Qaytarib bo‘lmaydi; audit yozuvi qoladi. O‘chirasizmi?"))return;
+        del.disabled=true;
+        try{await ecoRemove(orderId,file.id);await load();say("Biriktirma o‘chirildi.");}
+        catch(error){say("O‘chirish yakunlanmadi: "+(error.message||error.code)+". Ro‘yxatni yangilab, O‘chirishni yakunlashni bosing.",true);del.disabled=false;}
+      };
+    }
+    say(files.length?"Biriktirmalar: "+files.length:"Bu zakazga hali fayl biriktirilmagan.");
+  }
+  upload.onclick=async()=>{
+    if(busy||validating||!orderId)return;
+    const file=pick.files?.[0];if(!file){say("Avval fayl tanlang.",true);return;}
+    let info;validating=true;try{admin();info=await ecoInspectFile(file);}catch(error){validating=false;say(error.message,true);return;}
+    if(!alive()){validating=false;return;}
+    if(!confirm("Zakaz №"+number+"\nFayl: "+info.nom+"\nHajm: "+(info.hajm/1024/1024).toFixed(2)+" MB\nShu zakazga yuklaysizmi?")){validating=false;return;}
+    validating=false;busy=true;upload.disabled=pick.disabled=true;progress.hidden=false;progress.value=0;
+    const fileId=doc(collection(db,"zakazlar",orderId,"biriktirmalar")).id;
+    let record;
+    try{
+      record=await ecoReserve(orderId,fileId,info);admin();
+      task=uploadBytesResumable(ref(storage,ecoFilePath(orderId,fileId)),file,{contentType:info.turi,cacheControl:"private,max-age=0"});
+      activeTasks.add(task);cancel.hidden=false;
+      await new Promise((resolve,reject)=>task.on("state_changed",snap=>{
+        if(alive()){progress.value=Math.round(snap.bytesTransferred/snap.totalBytes*100);say("Yuklanmoqda: "+progress.value+"%");}
+      },reject,resolve));
+      await ecoReady(record);pick.value="";
+      await load();say("Fayl yuklandi va zakazga biriktirildi.");
+    }catch(error){
+      try{await load();}catch(_){}
+      say("Yuklash yakunlanmadi: "+(error.message||error.code)+
+        (record?". Tugallanmagan yozuv saqlandi. Ro‘yxatdan uni o‘chirib, so‘ng qayta yuklang.":". Ro‘yxatni yangilab holatini tekshiring."),true);
+    }finally{if(task)activeTasks.delete(task);task=null;busy=false;upload.disabled=!orderId;pick.disabled=false;cancel.hidden=true;progress.hidden=true;}
+  };
+  cancel.onclick=()=>task?.cancel();
+  refresh.onclick=()=>{if(busy){say("Yuklash tugashini kuting yoki to‘xtating.");return;}load().catch(error=>say("Fayllar olinmadi: "+(error.message||error.code),true));};
+  load().catch(error=>say("Biriktirmalar ulanmagan: "+(error.message||error.code)+". Firestore biriktirmalar qoidasi va Storage sozlamalarini tekshiring.",true));
+}
+const style=document.createElement("style");style.textContent=".eco-files-panel progress{display:block;width:100%;margin:10px 0}.eco-files-panel progress[hidden]{display:none}.eco-files-panel input[type=file]{margin:10px 0;max-width:100%}";document.head.append(style);
+const observer=new MutationObserver(ecoInstallAttachments);observer.observe(document.body,{childList:true,subtree:true});ecoInstallAttachments();
+onAuthStateChanged(auth,()=>{for(const task of activeTasks)task.cancel();document.querySelectorAll('.eco-files-panel').forEach(p=>p.remove());});
+}
+
+</script>
 </body>
 </html>
