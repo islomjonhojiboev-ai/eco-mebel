@@ -3876,26 +3876,40 @@ if (!alive()) {
     "Oyna yoki hisob o‘zgardi. Fayl holatini qayta tekshiring."
   );
 }
-
 progress.value = 100;
 say("Fayl yuklandi. Zakazga biriktirilmoqda...");
-      await ecoReady(record);pick.value="";
-      await load();say("Fayl yuklandi va zakazga biriktirildi.");
- }catch(error){
-  try{await load();}catch(_){}
+
+await ecoReady(record);
+pick.value = "";
+
+await load();
+say("Fayl yuklandi va zakazga biriktirildi.");
+
+}catch(error){
+  try {
+    await load();
+  } catch (_) {}
 
   say(
     "Yuklash jarayoni to‘liq tasdiqlanmadi: " +
-    (error.message  error.code  String(error)) +
+    (error.message || error.code || String(error)) +
     ". Fayllar ro‘yxatini yangilab holatini tekshiring. " +
     "Tekshirmasdan faylni o‘chirmang yoki qayta yuklamang.",
     true
   );
-}finally{if(task)activeTasks.delete(task);task=null;busy=false;upload.disabled=!orderId;pick.disabled=false;cancel.hidden=true;progress.hidden=true;}
+}finally{
+  if (task) activeTasks.delete(task);
+  task = null;
+  busy = false;
+  upload.disabled = !orderId;
+  pick.disabled = false;
+  cancel.hidden = true;
+  progress.hidden = true;
+}
 };
-    }finally{if(task)activeTasks.delete(task);task=null;busy=false;upload.disabled=!orderId;pick.disabled=false;cancel.hidden=true;progress.hidden=true;}
-  };
-  cancel.onclick=()=>task?.cancel();
+
+cancel.onclick = () => task?.cancel();
+
   refresh.onclick=()=>{if(busy){say("Yuklash tugashini kuting yoki to‘xtating.");return;}load().catch(error=>say("Fayllar olinmadi: "+(error.message||error.code),true));};
   load().catch(error=>say("Biriktirmalar ulanmagan: "+(error.message||error.code)+". Firestore biriktirmalar qoidasi va Storage sozlamalarini tekshiring.",true));
 }
