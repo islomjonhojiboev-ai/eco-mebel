@@ -3707,22 +3707,63 @@ async function ecoReady(record){
     tx.update(record,{holat:"tayyor",yangilanganVaqt:serverTimestamp()});
   });
 }
-async function ecoRemove(orderId,fileId){
-  admin();const record=doc(db,"zakazlar",orderId,"biriktirmalar",fileId);
-  await runTransaction(db,async tx=>{
-    const snap=await tx.get(record);admin();if(!snap.exists())throw new Error("Fayl yozuvi topilmadi.");
-    const data=snap.data();if(data.holat==="ochirilgan"||data.holat==="ochirilmoqda")return;
-    tx.update(record,{holat:"ochirilmoqda",yangilanganVaqt:serverTimestamp(),ochirganUid:ADMIN,ochirilganVaqt:serverTimestamp()});
-  });
-  try{await deleteObject(ref(storage,ecoFilePath(orderId,fileId)));}
-  catch(error){if(error.code!=="storage/object-not-found")throw error;}
-  await runTransaction(db,async tx=>{
-    const snap=await tx.get(record);admin();if(!snap.exists())throw new Error("Fayl yozuvi topilmadi.");
-    if(snap.data().holat==="ochirilgan")return;
-    if(snap.data().holat!=="ochirilmoqda")throw new Error("Fayl holati mos emas.");
-    tx.update(record,{holat:"ochirilgan",yangilanganVaqt:serverTimestamp()});
-  });
+let ecoSupabaseClientPromise;
+function ecoGetSupabase() { if (!ecoSupabaseClientPromise) { ecoSupabaseClientPromise = import( "https://esm.sh/@supabase/supabase-js@2" ).then(({ createClient }) => createClient( "https://ougfseuyadjzzzmpbkbq.supabase.co", "sb_publishable_aUO86Eh06MjNK-Eu9c5jlA_ArpO5kfT", { accessToken: async () => { admin(); const user = auth.currentUser; const token = await user.getIdToken(); admin();
+      if (auth.currentUser?.uid !== user.uid) {
+        throw new Error("Hisob o‘zgardi. Qayta kiring.");
+      }
+
+      return token;
+    }
+  }
+)).catch(error => {
+  ecoSupabaseClientPromise = undefined;
+  throw error;
+});
 }
+return ecoSupabaseClientPromise; }
+function ecoSupabasePath(orderId, fileId) { return "zakazlar/" + orderId + "/" + fileId; }  
+async function ecoRemove(orderId, fileId) { admin();
+const record = doc( db, "zakazlar", orderId, "biriktirmalar", fileId );
+const alreadyDeleted = await runTransaction(db, async tx => { const snap = await tx.get(record); admin();
+if (!snap.exists()) {
+  throw new Error("Fayl yozuvi topilmadi.");
+}
+
+const data = snap.data();
+
+if (data.holat === "ochirilgan") return true;
+if (data.holat === "ochirilmoqda") return false;
+
+tx.update(record, {
+  holat: "ochirilmoqda",
+  yangilanganVaqt: serverTimestamp(),
+  ochirganUid: ADMIN,
+  ochirilganVaqt: serverTimestamp()
+});
+
+return false;
+});
+if (alreadyDeleted) return;
+const supabase = await ecoGetSupabase(); admin();
+const { error: removeError } = await supabase.storage .from("zakaz-fayllari") .remove([ecoSupabasePath(orderId, fileId)]);
+if (removeError) throw removeError; admin();
+await runTransaction(db, async tx => { const snap = await tx.get(record); admin();
+if (!snap.exists()) {
+  throw new Error("Fayl yozuvi topilmadi.");
+}
+
+if (snap.data().holat === "ochirilgan") return;
+
+if (snap.data().holat !== "ochirilmoqda") {
+  throw new Error("Fayl holati mos emas.");
+}
+
+tx.update(record, {
+  holat: "ochirilgan",
+  yangilanganVaqt: serverTimestamp()
+});
+}); }
 function ecoInstallAttachments(){
   const dialog=document.getElementById("ecoOrderDetail");
   if(!dialog?.open||dialog.querySelector(".eco-files-panel"))return;
@@ -3764,7 +3805,17 @@ function ecoInstallAttachments(){
           try{
             admin();if(file.storagePath!==ecoFilePath(orderId,file.id))throw new Error("Fayl yo‘li noto‘g‘ri.");
             if(isView){w=window.open("","_blank");if(!w)throw new Error("Yangi oyna ochilmadi. Sayt uchun ruxsat bering.");w.opener=null;w.document.body.textContent="Fayl olinmoqda...";}
-            const blob=await getBlob(ref(storage,ecoFilePath(orderId,file.id)),50*1024*1024);
+           const supabase = await ecoGetSupabase();
+
+const { data: blob, error: downloadError } = await supabase.storage
+  .from("zakaz-fayllari")
+  .download(ecoSupabasePath(orderId, file.id));
+
+if (downloadError) throw downloadError;
+
+if (!blob || blob.size > 50 * 1024 * 1024) {
+  throw new Error("Fayl olinmadi yoki 50 MB chegarasidan katta.");
+}
             admin();if(!alive()){w?.close();return;}
             const safeBlob=new Blob([blob],{type:file.turi}),url=URL.createObjectURL(safeBlob);
             if(isView)w.location.replace(url);
@@ -3796,17 +3847,52 @@ function ecoInstallAttachments(){
     let record;
     try{
       record=await ecoReserve(orderId,fileId,info);admin();
-      task=uploadBytesResumable(ref(storage,ecoFilePath(orderId,fileId)),file,{contentType:info.turi,cacheControl:"private,max-age=0"});
-      activeTasks.add(task);cancel.hidden=false;
-      await new Promise((resolve,reject)=>task.on("state_changed",snap=>{
-        if(alive()){progress.value=Math.round(snap.bytesTransferred/snap.totalBytes*100);say("Yuklanmoqda: "+progress.value+"%");}
-      },reject,resolve));
+    const supabase = await ecoGetSupabase();
+admin();
+
+task = null;
+cancel.hidden = true;
+progress.removeAttribute("value");
+say("Fayl Supabase’ga yuklanmoqda. Kuting...");
+
+const { error: uploadError } = await supabase.storage
+  .from("zakaz-fayllari")
+  .upload(
+    ecoSupabasePath(orderId, fileId),
+    file,
+    {
+      contentType: info.turi,
+      cacheControl: "0",
+      upsert: false
+    }
+  );
+
+if (uploadError) throw uploadError;
+
+admin();
+
+if (!alive()) {
+  throw new Error(
+    "Oyna yoki hisob o‘zgardi. Fayl holatini qayta tekshiring."
+  );
+}
+
+progress.value = 100;
+say("Fayl yuklandi. Zakazga biriktirilmoqda...");
       await ecoReady(record);pick.value="";
       await load();say("Fayl yuklandi va zakazga biriktirildi.");
-    }catch(error){
-      try{await load();}catch(_){}
-      say("Yuklash yakunlanmadi: "+(error.message||error.code)+
-        (record?". Tugallanmagan yozuv saqlandi. Ro‘yxatdan uni o‘chirib, so‘ng qayta yuklang.":". Ro‘yxatni yangilab holatini tekshiring."),true);
+ }catch(error){
+  try{await load();}catch(_){}
+
+  say(
+    "Yuklash jarayoni to‘liq tasdiqlanmadi: " +
+    (error.message  error.code  String(error)) +
+    ". Fayllar ro‘yxatini yangilab holatini tekshiring. " +
+    "Tekshirmasdan faylni o‘chirmang yoki qayta yuklamang.",
+    true
+  );
+}finally{if(task)activeTasks.delete(task);task=null;busy=false;upload.disabled=!orderId;pick.disabled=false;cancel.hidden=true;progress.hidden=true;}
+};
     }finally{if(task)activeTasks.delete(task);task=null;busy=false;upload.disabled=!orderId;pick.disabled=false;cancel.hidden=true;progress.hidden=true;}
   };
   cancel.onclick=()=>task?.cancel();
