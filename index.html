@@ -582,7 +582,9 @@
   <p id="omborHolati" role="status">
     Ombor bo‘limi yaratildi. Materiallar hali ulanmagan.
   </p>
-
+<button type="button" id="omborMaterialQoshishBtn">
+  + Yangi material qo‘shish
+</button>
   <div id="omborRoyxati"></div>
 </section>
 <section id="materialBolimi" hidden>
@@ -1477,22 +1479,235 @@ function materialTiyin(narx, miqdor) {
   return Math.round(n * m * 100);
 }
 function materialJaminiHisobla() { let jami = 0; for (const mat of materiallar) { jami += materialTiyin( mat.narx, materialMiqdorlari.get(mat.id) || 0 ); } materialJamiEl.textContent = "Jami: " + (jami / 100).toFixed(2) + " TJS"; return jami; }
-function materialKatak() { const c = document.createElement("td"); c.style.cssText = "padding:6px;border-bottom:1px solid #eee;"; return c; }
-function omborJadvaliniChiz() { const joy = document.getElementById("omborRoyxati"); const holat = document.getElementById("omborHolati");
-if (!joy || !holat) return;
-joy.replaceChildren(); joy.style.overflowX = "auto";
-if (materiallar.length === 0) { holat.textContent = "Materiallar ro‘yxati bo‘sh yoki hali yuklanmagan."; return; }
-holat.textContent = "Jami materiallar: " + materiallar.length + ". Ombor qoldiqlari hali ulanmagan.";
-const jadval = document.createElement("table"); jadval.style.cssText = "width:100%;border-collapse:collapse;background:#fff;";
-const sarlavha = jadval.createTHead().insertRow();
-for (const nom of ["Material", "Birlik", "Ombor qoldig‘i"]) { const katak = document.createElement("th"); katak.textContent = nom; sarlavha.appendChild(katak); }
-const tana = jadval.createTBody();
-for (const material of materiallar) { const qator = tana.insertRow();
-qator.insertCell().textContent = material.nom;
-qator.insertCell().textContent = material.birlik;
-qator.insertCell().textContent = "Hali kiritilmagan";
+function materialKatak() { const c = document.createElement("td"); c.style.cssText = "padding:6px;border-bottom:1px solid #eee;"; return c; }document.getElementById("omborMaterialQoshishBtn") .addEventListener("click", () => { bolimniOch("material");
+document.getElementById("materialForm")
+  .scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+document.getElementById("materialNomi").focus();
+});
+let omborQoldiqlari = new Map();
+let omborQoldiqObunasi = null;
+let omborQoldiqTayyor = false;
+
+function omborJadvaliniChiz() {
+  const joy = document.getElementById("omborRoyxati");
+  const holat = document.getElementById("omborHolati");
+
+  if (!joy || !holat) return;
+
+  joy.replaceChildren();
+  joy.style.overflowX = "auto";
+
+  if (!omborQoldiqTayyor) {
+    holat.textContent = "Ombor qoldiqlari yuklanmoqda...";
+    return;
+  }
+
+  if (materiallar.length === 0) {
+    holat.textContent =
+      "Materiallar hali yuklanmagan yoki ro‘yxat bo‘sh.";
+    return;
+  }
+
+  holat.textContent =
+    "Jami materiallar: " + materiallar.length +
+    ". Boshlang‘ich qoldiqni bir marta kiriting.";
+
+  const jadval = document.createElement("table");
+  jadval.style.cssText =
+    "width:100%;border-collapse:collapse;background:#fff;";
+
+  const bosh = jadval.createTHead().insertRow();
+
+  for (const nom of [
+    "Material",
+    "Birlik",
+    "Ombor qoldig‘i",
+    "Amal"
+  ]) {
+    const th = document.createElement("th");
+    th.textContent = nom;
+    bosh.appendChild(th);
+  }
+
+  const tana = jadval.createTBody();
+
+  for (const material of materiallar) {
+    const qator = tana.insertRow();
+
+    qator.insertCell().textContent = material.nom;
+    qator.insertCell().textContent = material.birlik;
+
+    const qoldiqKatagi = qator.insertCell();
+    const amalKatagi = qator.insertCell();
+
+    if (omborQoldiqlari.has(material.id)) {
+      const qoldiq = omborQoldiqlari.get(material.id);
+
+      qoldiqKatagi.textContent =
+        (qoldiq / 100).toFixed(2);
+
+      amalKatagi.textContent = "Boshlang‘ich qoldiq saqlangan";
+      continue;
+    }const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = "10000000";
+    input.step = "0.01";
+    input.placeholder = "Miqdor";
+    input.style.cssText =
+      "width:120px;padding:10px;font:inherit;";
+
+    qoldiqKatagi.appendChild(input);
+
+    const saqlash = document.createElement("button");
+    saqlash.type = "button";
+    saqlash.textContent = "Saqlash";
+    amalKatagi.appendChild(saqlash);
+
+    saqlash.onclick = async () => {
+      const user = auth.currentUser;
+
+      if (
+        !user ||
+        user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2"
+      ) {
+        holat.textContent = "Admin hisobiga kiring.";
+        return;
+      }
+
+      const matn = input.value.trim();
+
+      if (!/^\d+(\.\d{1,2})?$/.test(matn)) {
+        holat.textContent =
+          "Miqdorni kiriting. Ko‘pi bilan 2 kasr xona.";
+        return;
+      }
+
+      const miqdor100 = Math.round(Number(matn) * 100);
+
+      if (
+        !Number.isSafeInteger(miqdor100) ||
+        miqdor100 < 0 ||
+        miqdor100 > 1000000000
+      ) {
+        holat.textContent = "Miqdorni tekshiring.";
+        return;
+      }
+
+      if (!confirm(
+        material.nom + ": " +
+        (miqdor100 / 100).toFixed(2) + " " +
+        material.birlik +
+        "\nBoshlang‘ich qoldiq sifatida saqlaysizmi?"
+      )) return;
+
+      saqlash.disabled = true;
+      input.disabled = true;
+      holat.textContent = "Qoldiq saqlanmoqda...";
+
+      try {
+        const ref = doc(
+          db,
+          "omborQoldiqlari",
+          material.id
+        );await runTransaction(db, async (tx) => {
+          const mavjud = await tx.get(ref);
+
+          if (auth.currentUser?.uid !== user.uid) {
+            throw new Error("Hisob o‘zgardi. Qayta kiring.");
+          }
+
+          if (mavjud.exists()) {
+            throw new Error(
+              "Bu materialning boshlang‘ich qoldig‘i " +
+              "allaqachon saqlangan. Sahifani yangilang."
+            );
+          }
+
+          tx.set(ref, {
+            qoldiq100: miqdor100,
+            userId: user.uid,
+            yaratilganVaqt: serverTimestamp()
+          });
+        });
+
+        holat.textContent = "Boshlang‘ich qoldiq saqlandi.";
+      } catch (error) {
+        holat.textContent =
+          "Saqlash tasdiqlanmadi: " +
+          (error.message || error.code) +
+          ". Qayta kiritishdan oldin sahifani yangilab tekshiring.";
+      } finally {
+        saqlash.disabled = false;
+        input.disabled = false;
+      }
+    };
+  }
+
+  joy.appendChild(jadval);
 }
-joy.appendChild(jadval); }
+
+onAuthStateChanged(auth, (user) => {
+  if (omborQoldiqObunasi) {
+    omborQoldiqObunasi();
+    omborQoldiqObunasi = null;
+  }
+
+  omborQoldiqlari.clear();
+  omborQoldiqTayyor = false;
+
+  const joy = document.getElementById("omborRoyxati");
+  const holat = document.getElementById("omborHolati");
+
+  if (joy) joy.replaceChildren();
+
+  if (
+    !user ||
+    user.uid !== "xtD3NXgcHcbKRWx9WTclzNXMn4S2"
+  ) {
+    if (holat) holat.textContent = "Admin hisobiga kiring.";
+    return;
+  }
+
+  if (holat) {
+    holat.textContent = "Ombor qoldiqlari yuklanmoqda...";
+  }
+
+  omborQoldiqObunasi = onSnapshot(
+    collection(db, "omborQoldiqlari"),
+
+    (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid) return;
+
+      omborQoldiqlari = new Map(
+        snapshot.docs.map((hujjat) => [
+          hujjat.id,
+          hujjat.data().qoldiq100
+        ])
+      );
+
+      omborQoldiqTayyor = true;
+      omborJadvaliniChiz();
+    },
+
+    (error) => {
+      if (auth.currentUser?.uid !== user.uid) return;
+
+      omborQoldiqTayyor = false;
+      if (joy) joy.replaceChildren();
+
+      if (holat) {
+        holat.textContent =
+          "Ombor yuklanmadi: " +
+          (error.message || error.code);
+      }
+    }
+  );
+});
 function materialJadvaliniChiz() {omborJadvaliniChiz(); materialRoyxatiEl.replaceChildren();
 if (materiallar.length === 0) { materialRoyxatiEl.textContent = "Hali material qo‘shilmagan. Pastdagi formadan qo‘shing."; materialJaminiHisobla(); return; }
 const jadval = document.createElement("table"); jadval.style.cssText = "width:100%;border-collapse:collapse;";
