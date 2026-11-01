@@ -1478,7 +1478,22 @@ function materialTiyin(narx, miqdor) {
 }
 function materialJaminiHisobla() { let jami = 0; for (const mat of materiallar) { jami += materialTiyin( mat.narx, materialMiqdorlari.get(mat.id) || 0 ); } materialJamiEl.textContent = "Jami: " + (jami / 100).toFixed(2) + " TJS"; return jami; }
 function materialKatak() { const c = document.createElement("td"); c.style.cssText = "padding:6px;border-bottom:1px solid #eee;"; return c; }
-function materialJadvaliniChiz() { materialRoyxatiEl.replaceChildren();
+function omborJadvaliniChiz() { const joy = document.getElementById("omborRoyxati"); const holat = document.getElementById("omborHolati");
+if (!joy || !holat) return;
+joy.replaceChildren(); joy.style.overflowX = "auto";
+if (materiallar.length === 0) { holat.textContent = "Materiallar ro‘yxati bo‘sh yoki hali yuklanmagan."; return; }
+holat.textContent = "Jami materiallar: " + materiallar.length + ". Ombor qoldiqlari hali ulanmagan.";
+const jadval = document.createElement("table"); jadval.style.cssText = "width:100%;border-collapse:collapse;background:#fff;";
+const sarlavha = jadval.createTHead().insertRow();
+for (const nom of ["Material", "Birlik", "Ombor qoldig‘i"]) { const katak = document.createElement("th"); katak.textContent = nom; sarlavha.appendChild(katak); }
+const tana = jadval.createTBody();
+for (const material of materiallar) { const qator = tana.insertRow();
+qator.insertCell().textContent = material.nom;
+qator.insertCell().textContent = material.birlik;
+qator.insertCell().textContent = "Hali kiritilmagan";
+}
+joy.appendChild(jadval); }
+function materialJadvaliniChiz() {omborJadvaliniChiz(); materialRoyxatiEl.replaceChildren();
 if (materiallar.length === 0) { materialRoyxatiEl.textContent = "Hali material qo‘shilmagan. Pastdagi formadan qo‘shing."; materialJaminiHisobla(); return; }
 const jadval = document.createElement("table"); jadval.style.cssText = "width:100%;border-collapse:collapse;";
 const bosh = document.createElement("tr"); for (const t of ["Material", "Narxi", "Soni", "Summa", ""]) { const th = document.createElement("th"); th.textContent = t; th.style.cssText = "text-align:left;padding:6px;border-bottom:2px solid #ccc;"; bosh.append(th); } jadval.append(bosh);
