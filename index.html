@@ -319,6 +319,9 @@
 <button type="button" data-bolim="material">
   🧮 Material hisobi
 </button>
+<button type="button" data-bolim="ombor">
+  📦 Ombor
+</button>
  <button type="button" data-bolim="ustalar">
   👷 Ustalar
 </button> 
@@ -563,6 +566,24 @@
   </p>
 
   <div id="xarajatlarRoyxati"></div>
+</section>
+<section id="omborBolimi" hidden>
+  <button type="button" class="boshgaQaytish">
+    Bosh sahifa
+  </button>
+
+  <h2>Materiallar ombori</h2>
+
+  <p>
+    Bu yerda materiallar qoldig‘i, kirim va chiqim
+    boshqariladi.
+  </p>
+
+  <p id="omborHolati" role="status">
+    Ombor bo‘limi yaratildi. Materiallar hali ulanmagan.
+  </p>
+
+  <div id="omborRoyxati"></div>
 </section>
 <section id="materialBolimi" hidden>
   <button type="button" class="boshgaQaytish">
@@ -1071,7 +1092,7 @@ const yangiZakazBolimi =
 
 const boshSahifaMenyusi =
   document.getElementById("boshSahifaMenyusi");
-function bolimniOch(bolim) {document.getElementById("ustalarBolimi").hidden =
+function bolimniOch(bolim) {document.getElementById("omborBolimi").hidden = bolim !== "ombor";document.getElementById("ustalarBolimi").hidden =
     bolim !== "ustalar";document.getElementById("tezkorZakazBtn").hidden =
     bolim === "yangi";
   boshSahifaMenyusi.hidden = bolim !== "bosh";
