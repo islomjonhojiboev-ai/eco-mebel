@@ -1940,16 +1940,61 @@ if (!tasdiq) {
   materialXabarEl.textContent = "Saqlash bekor qilindi.";
   return;
 }
+const miqdor100 = (qiymat) => { const son = Number(qiymat); const n = Math.round(son * 100);
+if ( !Number.isFinite(son)  son < 0  !Number.isSafeInteger(n)  n > 1000000000  Math.abs(son * 100 - n) > 0.000001 ) { throw new Error( "Miqdor 0 yoki musbat, ko‘pi bilan 2 kasr xona bo‘lsin." ); }
+return n; };
+const xarita = (qatorlar) => { const natija = new Map();
+for (const q of qatorlar) { if (!q.materialId || natija.has(q.materialId)) { throw new Error("Material IDsi yo‘q yoki takrorlangan."); }
+natija.set(q.materialId, miqdor100(q.miqdor));
+}
+return natija; };
+const kutilganHisob = JSON.stringify(zakaz.materialHisobi || null);
+const yangiMiqdorlar = xarita(qatorlar);
+await fs.runTransaction(db, async (tx) => { const z = await tx.get(zakazHujjati.ref);
+if (auth.currentUser?.uid !== user.uid) { throw new Error("Hisob o‘zgardi. Qayta kiring."); }
+if (!z.exists()) { throw new Error("Zakaz topilmadi."); }
+const joriy = z.data().materialHisobi || null;
+if (JSON.stringify(joriy) !== kutilganHisob) { throw new Error( "Zakaz materiallari boshqa oynada o‘zgargan. " + "Yangilab qayta oching." ); }
+const eskiMiqdorlar = xarita(joriy?.qatorlar || []);
+const ids = [...new Set([ ...eskiMiqdorlar.keys(), ...yangiMiqdorlar.keys() ])];
+if (ids.length > 30) { throw new Error( "Bir saqlashda ko‘pi bilan 30 xil material." ); }
+const yozuvlar = [];
+for (const id of ids) { const farq = (yangiMiqdorlar.get(id)  0) - (eskiMiqdorlar.get(id)  0);
+if (farq === 0) continue;
 
-await fs.updateDoc(zakazHujjati.ref, {
-  materialHisobi: {
-    qatorlar: qatorlar,
-    jamiHisob: jamiHisob,
-    pulBirligi: "TJS",
-    userId: user.uid,
-    yangilanganVaqt: fs.serverTimestamp()
-  }
-});
+const ref = fs.doc(db, "omborQoldiqlari", id);
+const snap = await tx.get(ref);
+
+const nom =
+  qatorlar.find(q => q.materialId === id)?.nom ||
+  joriy?.qatorlar?.find(q => q.materialId === id)?.nom ||
+  id;
+
+if (!snap.exists()) {
+  throw new Error(
+    nom + ": avval omborda boshlang‘ich qoldiq kiriting."
+  );
+}
+
+const old = snap.data().qoldiq100;
+const next = old - farq;
+
+if (
+  !Number.isSafeInteger(old) ||
+  !Number.isSafeInteger(next) ||
+  next < 0 ||
+  next > 1000000000
+) {
+  throw new Error(
+    nom + ": qoldiq yetarli emas yoki noto‘g‘ri."
+  );
+}
+
+yozuvlar.push({ ref, next });
+}
+for (const yozuv of yozuvlar) { tx.update(yozuv.ref, { qoldiq100: yozuv.next }); }
+tx.update(zakazHujjati.ref, { materialHisobi: { qatorlar: qatorlar, jamiHisob: jamiHisob, pulBirligi: "TJS", userId: user.uid, yangilanganVaqt: fs.serverTimestamp() } }); });
+
 
 materialXabarEl.style.color = "green";
 materialXabarEl.textContent =
@@ -2750,7 +2795,9 @@ materialTugma.addEventListener("click", () => { if (!Number.isSafeInteger(zakaz.
 if (materialMiqdorlari.size > 0) { const tasdiq = window.confirm( "Materiallar bo‘limida kiritilgan miqdorlar bor.\n" + "Ularni tozalab, zakaz №" + raqam + " uchun yangi hisob boshlaysizmi?\n\n" + "Avval saqlangan hisob o‘chirilmaydi." );
 if (!tasdiq) return;
 }
-materialMiqdorlari.clear(); materialZakazRaqamiEl.value = String(zakaz.zakazRaqami); materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz №" + raqam + " — " + (zakaz.ism || "Ism kiritilmagan") + ". Material miqdorlarini kiriting." + (zakaz.materialHisobi ? " Diqqat: saqlashda avvalgi material hisobi almashtiriladi." : "");
+materialMiqdorlari.clear(); for (const q of (zakaz.materialHisobi?.qatorlar || [])) {
+  materialMiqdorlari.set(q.materialId, q.miqdor);
+}materialZakazRaqamiEl.value = String(zakaz.zakazRaqami); materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz №" + raqam + " — " + (zakaz.ism || "Ism kiritilmagan") + ". Material miqdorlarini kiriting." + (zakaz.materialHisobi ? " Diqqat: saqlashda avvalgi material hisobi almashtiriladi." : "");
 materialJadvaliniChiz();
 bolimniOch("material");
 materialZakazRaqamiEl.scrollIntoView({ behavior: "smooth", block: "center" }); materialZakazRaqamiEl.focus({ preventScroll: true }); });
