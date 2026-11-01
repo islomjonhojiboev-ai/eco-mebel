@@ -1985,7 +1985,7 @@ const eskiMiqdorlar = xarita(joriy?.qatorlar || []);
 const ids = [...new Set([ ...eskiMiqdorlar.keys(), ...yangiMiqdorlar.keys() ])];
 if (ids.length > 30) { throw new Error( "Bir saqlashda ko‘pi bilan 30 xil material." ); }
 const yozuvlar = [];
-for (const id of ids) { const farq = (yangiMiqdorlar.get(id)  0) - (eskiMiqdorlar.get(id)  0);
+for (const id of ids) { const farq = (yangiMiqdorlar.get(id)||  0) - (eskiMiqdorlar.get(id)||  0);
 if (farq === 0) continue;
 
 const ref = fs.doc(db, "omborQoldiqlari", id);
