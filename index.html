@@ -1940,9 +1940,35 @@ if (!tasdiq) {
   materialXabarEl.textContent = "Saqlash bekor qilindi.";
   return;
 }
-const miqdor100 = (qiymat) => { const son = Number(qiymat); const n = Math.round(son * 100);
-if ( !Number.isFinite(son)  son < 0  !Number.isSafeInteger(n)  n > 1000000000  Math.abs(son * 100 - n) > 0.000001 ) { throw new Error( "Miqdor 0 yoki musbat, ko‘pi bilan 2 kasr xona bo‘lsin." ); }
-return n; };
+const miqdor100 = (qiymat) => {
+  const son = Number(qiymat);
+
+  if (!Number.isFinite(son)) {
+    throw new Error("Miqdor to‘g‘ri son bo‘lishi kerak.");
+  }
+
+  if (son < 0) {
+    throw new Error("Miqdor manfiy bo‘lishi mumkin emas.");
+  }
+
+  const n = Math.round(son * 100);
+
+  if (!Number.isSafeInteger(n)) {
+    throw new Error("Miqdor juda katta yoki noto‘g‘ri.");
+  }
+
+  if (n > 1000000000) {
+    throw new Error("Miqdor ruxsat etilgan chegaradan oshdi.");
+  }
+
+  if (Math.abs(son * 100 - n) > 0.000001) {
+    throw new Error(
+      "Miqdorni ko‘pi bilan 2 kasr xona bilan kiriting."
+    );
+  }
+
+  return n;
+};
 const xarita = (qatorlar) => { const natija = new Map();
 for (const q of qatorlar) { if (!q.materialId || natija.has(q.materialId)) { throw new Error("Material IDsi yo‘q yoki takrorlangan."); }
 natija.set(q.materialId, miqdor100(q.miqdor));
