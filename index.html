@@ -277,7 +277,172 @@
 #ustalarRoyxati {
   display: grid;
   gap: 12px;
-}   
+}  /* ===== BOSH SAHIFA DIZAYNI ===== */
+
+/* Asosiy bo‘limlar menyusi */
+#boshSahifaMenyusi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 24px;
+  padding: 18px;
+  border: 1px solid #dce5ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+/* Yashirilgan menyu boshqa bo‘limlarda chiqmasin */
+#boshSahifaMenyusi[hidden] {
+  display: none;
+}
+
+#boshSahifaMenyusi button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76px;
+  padding: 16px 12px;
+  border: 1px solid #d6e7ed;
+  border-radius: 12px;
+  background: #f0f8fa;
+  color: #164e63;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+#boshSahifaMenyusi button:hover {
+  border-color: #0891b2;
+  background: #e0f2f7;
+  box-shadow: 0 3px 10px rgba(8, 145, 178, 0.10);
+}
+
+/* Yangi zakaz — asosiy amal */
+#boshSahifaMenyusi button[data-bolim="yangi"] {
+  border-color: #087f9c;
+  background: #087f9c;
+  color: #ffffff;
+}
+
+#boshSahifaMenyusi button[data-bolim="yangi"]:hover {
+  border-color: #06677f;
+  background: #06677f;
+}
+
+#boshSahifaMenyusi button:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+/* Statistika kartochkalari */
+#boshStatistika {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 24px;
+}
+
+#boshStatistika[hidden] {
+  display: none;
+}
+
+#boshStatistika .statistika-karta {
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  min-width: 0;
+  min-height: 150px;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid #dce5ef;
+  border-top: 4px solid #0891b2;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+#boshStatistika .statistika-nom {
+  margin-bottom: 14px;
+  color: #526170;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+#boshStatistika .statistika-son {
+  margin-top: auto;
+  color: #164e63;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+#boshStatistika .statistika-izoh {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Statistika xabari butun qatorni egallasin */
+#boshStatistika > #statistikaXabari {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Planshet */
+@media (max-width: 900px) {
+  #boshSahifaMenyusi,
+  #boshStatistika {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Telefon */
+@media (max-width: 480px) {
+  #boshSahifaMenyusi {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  #boshSahifaMenyusi button {
+    min-height: 68px;
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  #boshStatistika {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  #boshStatistika .statistika-karta {
+    min-height: 125px;
+    padding: 16px;
+  }
+
+  #boshStatistika .statistika-son {
+    font-size: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #boshSahifaMenyusi button {
+    transition: none;
+  }
+} 
   </style>
 </head>
 <body>
