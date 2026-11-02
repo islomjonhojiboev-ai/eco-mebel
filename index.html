@@ -442,18 +442,49 @@
   #boshSahifaMenyusi button {
     transition: none;
   }
-} /* Sayt nomi — tillo rang */
-body > h1 {
-  color: #b8860b;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px rgba(184, 134, 11, 0.18);
+} /* Eco Mebel va muallif yozuvi — jilvador oltin */
+body > h1,
+body > h1 + p {
+  color: #a87508;
+  background-image: linear-gradient(
+    115deg,
+    #795008 0%,
+    #ba8515 18%,
+    #e2b644 35%,
+    #9c6809 48%,
+    #f5d675 60%,
+    #c59120 76%,
+    #795008 100%
+  );
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(100, 65, 5, 0.18));
 }
 
-/* Muallif yozuvi — tillo rang */
+/* Asosiy nom */
+body > h1 {
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-shadow: none;
+}
+
+/* Muallif yozuvi */
 body > h1 + p {
-  color: #b8860b;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* Majburiy yuqori kontrast rejimi */
+@media (forced-colors: active) {
+  body > h1,
+  body > h1 + p {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: CanvasText;
+    filter: none;
+  }
 }
   </style>
 </head>
