@@ -1905,7 +1905,7 @@ if (qatorlar.length === 0) { materialXabarEl.textContent = "Kamida bitta materia
 if (!Number.isSafeInteger(jamiHisob)) { materialXabarEl.textContent = "Jami summa juda katta."; return; }
 materialSaqlashBtnEl.disabled = true; materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz tekshirilmoqda...";
 try { const fs = await import( "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js" );
-const natija = await fs.getDocs(
+const natija = await fs.getDocsFromServer(
   fs.query(
     fs.collection(db, "zakazlar"),
     fs.where("zakazRaqami", "==", raqam),
@@ -1974,13 +1974,31 @@ for (const q of qatorlar) { if (!q.materialId || natija.has(q.materialId)) { thr
 natija.set(q.materialId, miqdor100(q.miqdor));
 }
 return natija; };
-const kutilganHisob = JSON.stringify(zakaz.materialHisobi || null);
+const hisobKaliti = (qiymat) => { const tartibla = (v) => { if (v === null) return null;
+if (Array.isArray(v)) {
+  return v.map(tartibla);
+}
+
+if (typeof v === "object") {
+  const yangi = {};
+
+  for (const kalit of Object.keys(v).sort()) {
+    yangi[kalit] = tartibla(v[kalit]);
+  }
+
+  return yangi;
+}
+
+return v;
+};
+return JSON.stringify(tartibla(qiymat)); };
+const kutilganHisob = hisobKaliti(zakaz.materialHisobi ?? null);
 const yangiMiqdorlar = xarita(qatorlar);
 await fs.runTransaction(db, async (tx) => { const z = await tx.get(zakazHujjati.ref);
 if (auth.currentUser?.uid !== user.uid) { throw new Error("Hisob o‘zgardi. Qayta kiring."); }
 if (!z.exists()) { throw new Error("Zakaz topilmadi."); }
 const joriy = z.data().materialHisobi || null;
-if (JSON.stringify(joriy) !== kutilganHisob) { throw new Error( "Zakaz materiallari boshqa oynada o‘zgargan. " + "Yangilab qayta oching." ); }
+if (hisobKaliti(joriy) !== kutilganHisob) { throw new Error( "Zakaz materiallari boshqa oynada o‘zgargan. " + "Yangilab qayta oching." ); }
 const eskiMiqdorlar = xarita(joriy?.qatorlar || []);
 const ids = [...new Set([ ...eskiMiqdorlar.keys(), ...yangiMiqdorlar.keys() ])];
 if (ids.length > 30) { throw new Error( "Bir saqlashda ko‘pi bilan 30 xil material." ); }
