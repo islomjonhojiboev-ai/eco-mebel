@@ -1491,7 +1491,114 @@ document.getElementById("materialNomi").focus();
 let omborQoldiqlari = new Map();
 let omborQoldiqObunasi = null;
 let omborQoldiqTayyor = false;
+let omborAmalBand = false;
 
+async function omborAmalBajar(material, eski100, turi) {
+  if (omborAmalBand) return;
+  const holat = document.getElementById("omborHolati");
+  const adminUid = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+  if (auth.currentUser?.uid !== adminUid) {
+    holat.textContent = "Admin hisobiga kiring.";
+    return;
+  }
+  const kirim = turi === "kirim";
+  if (!kirim) {
+    if (turi !== "tuzatish") return;
+  }
+  const sarlavha = kirim ? "Kirim" : "Qoldiqni tuzatish";
+  const savol = kirim
+    ? "Yangi kelgan miqdorni kiriting (jami qoldiqni emas):"
+    : "Haqiqiy JAMI qoldiqni kiriting:";
+  const matn = prompt(
+    sarlavha + " — " + material.nom + " (" + material.birlik + ")" +
+    "\nHozirgi qoldiq: " + (eski100 / 100).toFixed(2) + "\n" + savol,
+    kirim ? "" : (eski100 / 100).toFixed(2)
+  );
+  if (matn === null) return;
+  const toza = matn.trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(toza)) {
+    holat.textContent = "To‘g‘ri miqdor kiriting: ko‘pi bilan 2 kasr xona.";
+    return;
+  }
+  const miqdor100 = Math.round(Number(toza) * 100);
+  if (!Number.isSafeInteger(miqdor100)) {
+    holat.textContent = "Miqdor noto‘g‘ri."; return;
+  }
+  if (miqdor100 > 1000000000) {
+    holat.textContent = "Miqdor juda katta."; return;
+  }
+  if (kirim) {
+    if (miqdor100 === 0) {
+      holat.textContent = "Kirim 0 dan katta bo‘lsin."; return;
+    }
+  }
+  const yangi100 = kirim ? eski100 + miqdor100 : miqdor100;
+  if (!Number.isSafeInteger(yangi100)) {
+    holat.textContent = "Jami qoldiq noto‘g‘ri."; return;
+  }
+  if (yangi100 > 1000000000) {
+    holat.textContent = "Jami qoldiq chegaradan oshdi."; return;
+  }
+  if (yangi100 === eski100) {
+    holat.textContent = "Qoldiq o‘zgarmadi."; return;
+  }
+  const sababMatni = prompt(
+    kirim ? "Kirim izohi: yetkazuvchi yoki yuk haqida (3–500 belgi):"
+          : "Tuzatish sababi (3–500 belgi):", ""
+  );
+  if (sababMatni === null) return;
+  const sabab = sababMatni.trim();
+  if (sabab.length < 3) {
+    holat.textContent = "Izoh kamida 3 belgi bo‘lsin."; return;
+  }
+  if (sabab.length > 500) {
+    holat.textContent = "Izoh 500 belgidan oshmasin."; return;
+  }
+  if (!confirm(
+    sarlavha + ": " + material.nom +
+    "\nOldingi: " + (eski100 / 100).toFixed(2) +
+    (kirim ? "\nKirim: " + (miqdor100 / 100).toFixed(2) : "") +
+    "\nYangi jami: " + (yangi100 / 100).toFixed(2) +
+    "\nIzoh: " + sabab + "\nSaqlaysizmi?"
+  )) return;
+
+  omborAmalBand = true;
+  holat.textContent = "Saqlanmoqda. Tugashini kuting...";
+  try {
+    const qoldiqRef = doc(db, "omborQoldiqlari", material.id);
+    const tarixRef = doc(collection(db, "omborTuzatishlari"));
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(qoldiqRef);
+      if (auth.currentUser?.uid !== adminUid) {
+        throw new Error("Hisob o‘zgardi. Qayta kiring.");
+      }
+      if (!snap.exists()) {
+        throw new Error("Avval boshlang‘ich qoldiq kiriting.");
+      }
+      if (snap.data().qoldiq100 !== eski100) {
+        throw new Error("Qoldiq o‘zgargan. Yangilab qayta tekshiring.");
+      }
+      tx.update(qoldiqRef, {qoldiq100: yangi100});
+      tx.set(tarixRef, {
+        materialId: material.id,
+        nom: material.nom,
+        birlik: material.birlik,
+        turi: turi,
+        eski100: eski100,
+        yangi100: yangi100,
+        sabab: sabab,
+        userId: adminUid,
+        yaratilganVaqt: serverTimestamp()
+      });
+    });
+    holat.textContent = sarlavha + " saqlandi. Takror kiritmang.";
+  } catch (error) {
+    holat.textContent = "Saqlash tasdiqlanmadi: " + String(error.message) +
+      ". Amalni qayta kiritishdan oldin sahifani yangilab qoldiqni tekshiring.";
+  } finally {
+    omborAmalBand = false;
+  }
+}
 function omborJadvaliniChiz() {
   const joy = document.getElementById("omborRoyxati");
   const holat = document.getElementById("omborHolati");
@@ -1543,16 +1650,33 @@ function omborJadvaliniChiz() {
 
     const qoldiqKatagi = qator.insertCell();
     const amalKatagi = qator.insertCell();
+if (omborQoldiqlari.has(material.id)) {
+  const qoldiq = omborQoldiqlari.get(material.id);
 
-    if (omborQoldiqlari.has(material.id)) {
-      const qoldiq = omborQoldiqlari.get(material.id);
+  qoldiqKatagi.textContent =
+    (qoldiq / 100).toFixed(2);
 
-      qoldiqKatagi.textContent =
-        (qoldiq / 100).toFixed(2);
+  const kirimBtn = document.createElement("button");
+  kirimBtn.type = "button";
+  kirimBtn.textContent = "+ Kirim";
+  kirimBtn.style.marginRight = "8px";
 
-      amalKatagi.textContent = "Boshlang‘ich qoldiq saqlangan";
-      continue;
-    }const input = document.createElement("input");
+  kirimBtn.onclick = () => {
+    omborAmalBajar(material, qoldiq, "kirim");
+  };
+
+  const tuzatishBtn = document.createElement("button");
+  tuzatishBtn.type = "button";
+  tuzatishBtn.textContent = "Qoldiqni tuzatish";
+
+  tuzatishBtn.onclick = () => {
+    omborAmalBajar(material, qoldiq, "tuzatish");
+  };
+
+  amalKatagi.append(kirimBtn, tuzatishBtn);
+  continue;
+}
+   const input = document.createElement("input");
     input.type = "number";
     input.min = "0";
     input.max = "10000000";
