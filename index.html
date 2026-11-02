@@ -442,41 +442,73 @@
   #boshSahifaMenyusi button {
     transition: none;
   }
-} /* Eco Mebel va muallif yozuvi — jilvador oltin */
+} /* Yaltiroq tilla yozuvlar */
 body > h1,
 body > h1 + p {
-  color: #a87508;
+  display: table;
+  max-width: 100%;
+
+  color: #c99700;
+
   background-image: linear-gradient(
-    115deg,
-    #795008 0%,
-    #ba8515 18%,
-    #e2b644 35%,
-    #9c6809 48%,
-    #f5d675 60%,
-    #c59120 76%,
-    #795008 100%
+    110deg,
+    #895500 0%,
+    #d4a017 15%,
+    #ffdf65 30%,
+    #b87900 43%,
+    #ffe994 49%,
+    #fff8dc 51%,
+    #ffe994 53%,
+    #c58a00 62%,
+    #ffdc60 80%,
+    #895500 100%
   );
-  background-size: 100% 100%;
+
+  background-size: 220% 100%;
+  background-position: 100% 50%;
+
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 1px rgba(100, 65, 5, 0.18));
-}
 
-/* Asosiy nom */
-body > h1 {
-  font-weight: 800;
-  letter-spacing: 0.8px;
   text-shadow: none;
+  filter: drop-shadow(0 1px 1px rgba(110, 70, 0, 0.25));
+
+  animation: ecoGoldShine 6s ease-in-out infinite;
 }
 
-/* Muallif yozuvi */
+body > h1 {
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
 body > h1 + p {
   font-weight: 700;
   letter-spacing: 0.3px;
 }
 
-/* Majburiy yuqori kontrast rejimi */
+/* Yozuv ustidan sekin o‘tadigan nur */
+@keyframes ecoGoldShine {
+  0%,
+  20% {
+    background-position: 100% 50%;
+  }
+
+  75%,
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Harakatsiz ko‘rinishni afzal ko‘rganlar uchun */
+@media (prefers-reduced-motion: reduce) {
+  body > h1,
+  body > h1 + p {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}
+
 @media (forced-colors: active) {
   body > h1,
   body > h1 + p {
@@ -484,6 +516,7 @@ body > h1 + p {
     -webkit-text-fill-color: currentColor;
     color: CanvasText;
     filter: none;
+    animation: none;
   }
 }
   </style>
