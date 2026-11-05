@@ -1389,7 +1389,11 @@ addButton(button, text, kind);
     try{const safe=ecoOrderPlace("",z.lokatsiyaUrl).lokatsiyaUrl;
       const a=ecoD("a","Lokatsiya havolasini ochish");a.href=safe;a.target="_blank";a.rel="noopener noreferrer";
     }catch(_){ecoD("p","Saqlangan lokatsiya xavfsiz https:// havola emas; ochish o‘chirildi.").style.color="#b91c1c";}
-  }
+  }/* Rangli zakaz amallari paneli */
+const actionBox = ecoD("section", null);
+actionBox.className = "eco-order-actions";
+
+ecoCompactRenderActions(id);
   ecoD("h3","Manzil / lokatsiyani kiritish yoki tuzatish");
   const form=ecoD("form",null);
   const addressLabel=ecoD("label","Manzil (ixtiyoriy, 500 belgigacha)",form),address=ecoD("textarea",null,addressLabel);address.maxLength=500;address.value=z.manzil||"";
@@ -3381,7 +3385,7 @@ const materialTugma = document.createElement("button"); materialTugma.type = "bu
 materialTugma.addEventListener("click", () => { if (!Number.isSafeInteger(zakaz.zakazRaqami) || zakaz.zakazRaqami < 1) { alert("Bu zakazning raqami yo‘q yoki noto‘g‘ri."); return; }
 if (materialMiqdorlari.size > 0) { const tasdiq = window.confirm( "Materiallar bo‘limida kiritilgan miqdorlar bor.\n" + "Ularni tozalab, zakaz №" + raqam + " uchun yangi hisob boshlaysizmi?\n\n" + "Avval saqlangan hisob o‘chirilmaydi." );
 if (!tasdiq) return;
-}
+}ecoDetailClose();
 materialMiqdorlari.clear(); for (const q of (zakaz.materialHisobi?.qatorlar || [])) {
   materialMiqdorlari.set(q.materialId, q.miqdor);
 }materialZakazRaqamiEl.value = String(zakaz.zakazRaqami); materialXabarEl.style.color = "#164e63"; materialXabarEl.textContent = "Zakaz №" + raqam + " — " + (zakaz.ism || "Ism kiritilmagan") + ". Material miqdorlarini kiriting." + (zakaz.materialHisobi ? " Diqqat: saqlashda avvalgi material hisobi almashtiriladi." : "");
