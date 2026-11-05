@@ -562,6 +562,95 @@ body > h1 + p {
 /* Statistika kartochkalariga tilla chiziq */
 #boshStatistika .statistika-karta {
   border-top-color: #c99a2e;
+}/* Zakaz ichidagi amallar paneli */
+#ecoOrderDetail .eco-order-actions {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #d8bd78;
+  border-radius: 16px;
+  background: #fffcf4;
+}
+
+#ecoOrderDetail .eco-order-actions h3 {
+  margin: 0 0 14px;
+  color: #164e63;
+}
+
+#ecoOrderDetail .eco-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+#ecoOrderDetail .eco-action-tile {
+  width: 100%;
+  min-height: 72px;
+  margin: 0;
+  padding: 14px 10px;
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+#ecoOrderDetail .eco-action-tile[data-kind="pay"] {
+  background: #15803d;
+}
+
+#ecoOrderDetail .eco-action-tile[data-kind="material"] {
+  background: #087f9c;
+}
+
+#ecoOrderDetail .eco-action-tile[data-kind="pdf"] {
+  background: #7c3aed;
+}
+
+#ecoOrderDetail .eco-action-tile[data-kind="archive"] {
+  background: linear-gradient(
+    120deg,
+    #c49324,
+    #ffe49a,
+    #d4a536
+  );
+  border: 1px solid #b8860b;
+  color: #352507;
+}
+
+#ecoOrderDetail .eco-state-control {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+#ecoOrderDetail .eco-state-control select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e3a8a;
+  font: inherit;
+}
+
+#ecoOrderDetail .eco-action-tile:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@media (max-width: 380px) {
+  #ecoOrderDetail .eco-actions-grid {
+    grid-template-columns: 1fr;
+  }
 }
   </style>
 </head>
