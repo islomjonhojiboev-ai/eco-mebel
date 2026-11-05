@@ -3477,31 +3477,50 @@ element(
   "jami"
 );
 }
-element( "p", "Hisobot tayyorlangan vaqt: " + new Date().toLocaleString("uz-UZ"), hujjat.body, "izoh" ); });
+element(
+  "p",
+  "Hisobot tayyorlangan vaqt: " +
+    new Date().toLocaleString("uz-UZ"),
+  hujjat.body,
+  "izoh"
+);
+});
 
-  }
-},
-(error) => {
-  if (auth.currentUser?.uid !== user.uid) return;
+/* PDF tugmasini amallarga qo‘shish */
+amalKatagi.appendChild(pdfTugma);
 
-  zakazlarJadvali.replaceChildren();
-  zakazlarHolati.textContent =
-    "Zakazlarni yuklashda xatolik: " + error.code;
-}
-); });
-   qator.appendChild(amalKatagi);
+/* buildOrderRow funksiyasining oxiri */
+qator.appendChild(amalKatagi);
 
 return qator;
 };
 
+/* Shu zakazning amallarini saqlash */
 ecoCompactActions.set(
   zakaz.id,
   buildOrderRow
 );
 
+/* Zakaz qatorini jadvalga chiqarish */
 zakazlarJadvali.appendChild(
   buildOrderRow()
-); 
+);
+
+/* Zakazlar siklining oxiri */
+}
+
+/* Snapshot muvaffaqiyatli o‘qilgan qismning oxiri */
+},
+(error) => {
+  if (auth.currentUser?.uid !== user.uid) return;
+
+  zakazlarJadvali.replaceChildren();
+
+  zakazlarHolati.textContent =
+    "Zakazlarni yuklashda xatolik: " + error.code;
+}
+);
+});
 
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
