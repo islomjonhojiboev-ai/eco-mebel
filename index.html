@@ -651,6 +651,50 @@ body > h1 + p {
   #ecoOrderDetail .eco-actions-grid {
     grid-template-columns: 1fr;
   }
+}/* Zakazlar ro‘yxatida faqat 1, 2 va 7-ustunlar */
+#zakazlarBolimi thead th:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(7)),
+#zakazlarJadvali > tr.eco-compact-order > td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(7)) {
+  display: none;
+}
+
+/* Holatni ro‘yxatda tahrirlash o‘rniga yozuv chiqarish */
+#zakazlarJadvali > tr.eco-compact-order > td:nth-child(7) > select {
+  display: none;
+}
+
+#zakazlarJadvali > tr.eco-compact-order {
+  cursor: pointer;
+}
+
+#zakazlarJadvali > tr.eco-compact-order > td {
+  padding: 14px 10px;
+  overflow-wrap: anywhere;
+}
+
+#zakazlarJadvali .eco-order-open {
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fffaeb;
+  color: #164e63;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#zakazlarJadvali .eco-order-open:hover {
+  background: #ffe9a8;
+}
+
+#zakazlarJadvali .eco-list-state {
+  display: inline-block;
+  padding: 6px 10px;
+  border: 1px solid #d8bd78;
+  border-radius: 9px;
+  background: #fffcf4;
+  color: #164e63;
+  font-size: 13px;
+  line-height: 1.4;
 }
   </style>
 </head>
@@ -3506,9 +3550,54 @@ ecoCompactActions.set(
 );
 
 /* Zakaz qatorini jadvalga chiqarish */
-zakazlarJadvali.appendChild(
-  buildOrderRow()
+/* Ro‘yxat uchun ixcham zakaz qatori */
+const compactRow = buildOrderRow();
+compactRow.classList.add("eco-compact-order");
+
+/* Zakaz raqamini ochish tugmasiga aylantirish */
+const numberCell = compactRow.cells[0];
+
+const openButton = document.createElement("button");
+openButton.type = "button";
+openButton.className = "eco-order-open";
+openButton.textContent = numberCell.textContent;
+
+openButton.setAttribute(
+  "aria-label",
+  "Zakaz " + raqam + " — " +
+  (zakaz.ism || "Mijoz") + ": ochish"
 );
+
+openButton.onclick = () => {
+  ecoOpenOrderDetail(zakaz.id, openButton);
+};
+
+numberCell.replaceChildren(openButton);
+
+/* Holatni oddiy yozuv ko‘rinishida chiqarish */
+const stateCell = compactRow.cells[6];
+const stateSelect = stateCell.querySelector("select");
+
+const stateBadge = document.createElement("span");
+stateBadge.className = "eco-list-state";
+stateBadge.textContent = stateSelect
+  ? stateSelect.selectedOptions[0].textContent
+  : (zakaz.holat || "Yangi");
+
+stateCell.appendChild(stateBadge);
+
+/* Qator ustiga bosilganda ham zakazni ochish */
+compactRow.addEventListener("click", (event) => {
+  if (
+    event.target.closest(
+      "button, a, input, select, textarea"
+    )
+  ) return;
+
+  openButton.click();
+});
+
+zakazlarJadvali.appendChild(compactRow);
 
 /* Zakazlar siklining oxiri */
 }
