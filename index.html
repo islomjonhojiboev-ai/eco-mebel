@@ -1315,7 +1315,51 @@ let ecoDetailToken=0,ecoDetailSaving=false,ecoDetailOrigin=null;
 function ecoD(tag,text,parent=ecoDetail){const e=document.createElement(tag);if(text!=null)e.textContent=String(text);parent.append(e);return e;}
 function ecoDetailClose(){if(ecoDetailSaving)return;ecoDetailToken++;ecoDetail.close();ecoDetail.replaceChildren();if(ecoDetailOrigin?.isConnected)ecoDetailOrigin.focus();}
 ecoDetail.addEventListener("cancel",event=>{event.preventDefault();ecoDetailClose();});
-function ecoDetailDraw(id,z,token){
+/* Zakaz amallari uchun yordamchi kod */ const ecoCompactActions = new Map();
+function ecoCompactRenderActions(id) { const box = ecoDetail.querySelector( ".eco-order-actions" );
+if (!box) return;
+box.replaceChildren();
+const title = document.createElement("h3"); title.textContent = "Zakaz amallari"; box.appendChild(title);
+const build = ecoCompactActions.get(id);
+if (!build) { const note = document.createElement("p"); note.textContent = "Amallar hali yuklanmagan. " + "Ro‘yxatga qaytib zakazni qayta oching.";
+box.appendChild(note);
+return;
+}
+const source = build();
+const grid = document.createElement("div"); grid.className = "eco-actions-grid"; box.appendChild(grid);
+/* Mavjud holat menyusi */ const state = source.cells[6] .querySelector("select");
+if (state) { const label = document.createElement("label"); label.className = "eco-state-control";
+const caption = document.createElement("span");
+caption.textContent = "Holatni o‘zgartirish";
+
+label.append(caption, state);
+grid.appendChild(label);
+}
+function addButton(button, text, kind) { if (!button) return;
+button.removeAttribute("style");
+button.className = "eco-action-tile";
+button.textContent = text;
+button.dataset.kind = kind;
+
+grid.appendChild(button);
+}
+/* Mavjud to‘lov tugmasi */ const payment = source.cells[9] .querySelector("button");
+addButton( payment, "To‘lovlar / pul kiritish", "pay" );
+/* Mavjud material, PDF va arxiv tugmalari */ const buttons = source.cells[12] .querySelectorAll("button");
+for (const button of buttons) { const text = button.textContent.trim();
+if (text === "Batafsil") continue;
+
+let kind = "archive";
+
+if (text === "Materiallar") {
+  kind = "material";
+} else if (text === "PDF") {
+  kind = "pdf";
+}
+
+addButton(button, text, kind);
+} }
+    function ecoDetailDraw(id,z,token){
   ecoDetail.replaceChildren();
   const title=ecoD("h2","Zakaz №"+(z.zakazRaqami??"—"));title.id="ecoOrderDetailTitle";
   const close=ecoD("button","Yopish / ro‘yxatga qaytish");close.type="button";close.style.background="#475569";close.onclick=ecoDetailClose;
