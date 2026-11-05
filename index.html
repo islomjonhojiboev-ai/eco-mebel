@@ -3082,12 +3082,13 @@ const zakazlar = snapshot.docs
   ? (arxivRejimi ? "Arxivdagi zakazlar: " : "Jami zakazlar: ") +
     zakazlar.length
   : (arxivRejimi ? "Arxiv bo‘sh." : "Hozircha zakazlar yo‘q.");
+ ecoCompactActions.clear(); 
 for (const zakaz of zakazlar) {
   const raqam = Number.isInteger(zakaz.zakazRaqami)
     ? String(zakaz.zakazRaqami).padStart(4, "0")
     : "Eski zakaz";
-  
-
+  const buildOrderRow = () => {
+  const arxivRejimi = zakaz.arxivlangan === true;
     const sana = zakaz.yaratilganVaqt?.toDate
       ? zakaz.yaratilganVaqt.toDate().toLocaleString("uz-UZ")
       : "—";
@@ -3477,8 +3478,7 @@ element(
 );
 }
 element( "p", "Hisobot tayyorlangan vaqt: " + new Date().toLocaleString("uz-UZ"), hujjat.body, "izoh" ); });
-amalKatagi.appendChild(pdfTugma);
-qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
+
   }
 },
 (error) => {
@@ -3489,7 +3489,19 @@ qator.appendChild(amalKatagi); zakazlarJadvali.appendChild(qator);
     "Zakazlarni yuklashda xatolik: " + error.code;
 }
 ); });
-    
+   qator.appendChild(amalKatagi);
+
+return qator;
+};
+
+ecoCompactActions.set(
+  zakaz.id,
+  buildOrderRow
+);
+
+zakazlarJadvali.appendChild(
+  buildOrderRow()
+); 
 
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
