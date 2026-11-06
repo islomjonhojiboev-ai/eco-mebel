@@ -1694,12 +1694,11 @@ body > h1 + p {
   );
 
   /* 9-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-uid !== user.uid
-            ) {
-              throw new Error(
-                "Hisob o‘zgardi. Qayta kiring."
-              );
-            }
+if (auth.currentUser?.uid !== user.uid) {
+  throw new Error(
+    "Hisob o‘zgardi. Qayta kiring."
+  );
+}
 
             const oxirgiRaqam =
               hisoblagich.exists()
