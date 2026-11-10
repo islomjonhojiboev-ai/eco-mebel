@@ -2447,45 +2447,257 @@ if (auth.currentUser?.uid !== user.uid) {
     ecoCompactRenderActions(id);
 
     /* 13-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-tableBody
-        );
+/* Manzil va lokatsiya formasi */
 
-        const rowValues = [
-          material.nom || "—",
-          material.birlik || "—",
-          material.miqdor ?? "—",
-          cash(material.narx),
+ecoD(
+  "h3",
+  "Manzil / lokatsiyani kiritish yoki tuzatish"
+);
 
-          cash(
-            material.summaHisob == null
-              ? null
-              : material.summaHisob / 100
-          )
-        ];
+const form = ecoD("form", null);
 
-        for (const value of rowValues) {
-          ecoD("td", value, tr);
-        }
-      }
+const addressLabel = ecoD(
+  "label",
+  "Manzil (ixtiyoriy, 500 belgigacha)",
+  form
+);
 
-      const materialTotal =
-        z.materialHisobi.jamiHisob;
+const address = ecoD(
+  "textarea",
+  null,
+  addressLabel
+);
 
-      ecoD(
-        "p",
-        "Material jami: " +
-        cash(
-          materialTotal == null
-            ? null
-            : materialTotal / 100
-        )
-      );
-    }
+address.maxLength = 500;
+address.value = z.manzil || "";
 
-    close.focus();
+const urlLabel = ecoD(
+  "label",
+  "Lokatsiya havolasi (ixtiyoriy, https://)",
+  form
+);
+
+const url = ecoD(
+  "input",
+  null,
+  urlLabel
+);
+
+url.type = "url";
+url.maxLength = 2048;
+url.value = z.lokatsiyaUrl || "";
+
+const save = ecoD(
+  "button",
+  "Manzil va lokatsiyani saqlash",
+  form
+);
+
+save.type = "submit";
+
+ecoD(
+  "p",
+  "Faqat shu ikkita maydon yangilanadi. " +
+  "Summa, to‘lov, davomat, material va " +
+  "usta biriktirishlari o‘zgarmaydi.",
+  form
+);
+
+form.onsubmit = async event => {
+  event.preventDefault();
+
+  if (ecoDetailSaving) return;
+
+  let next;
+
+  try {
+    next = ecoOrderPlace(
+      address.value,
+      url.value
+    );
+  } catch (error) {
+    status.textContent = error.message;
+    status.style.color = "#b91c1c";
+    return;
   }
 
-  /* 14-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+  const confirmed = confirm(
+    "Zakaz №" +
+    (z.zakazRaqami ?? id) +
+    " — " +
+    (z.ism || "—") +
+    "\nManzil: " +
+    (next.manzil || "(bo‘sh)") +
+    "\nLokatsiya: " +
+    (next.lokatsiyaUrl || "(bo‘sh)") +
+    "\nBo‘sh maydon avvalgi qiymatni " +
+    "olib tashlaydi. Saqlaysizmi?"
+  );
+
+  if (!confirmed) return;
+
+  ecoDetailSaving = true;
+
+  save.disabled = true;
+  close.disabled = true;
+  refresh.disabled = true;
+  address.disabled = true;
+  url.disabled = true;
+
+  status.textContent = "Saqlanmoqda...";
+
+  let saved = false;
+
+  try {
+    await ecoSaveOrderPlace(
+      id,
+      z,
+      next
+    );
+
+    saved = true;
+  } catch (error) {
+    status.style.color = "#b91c1c";
+
+    status.textContent =
+      "Saqlash tasdiqlanmadi: " +
+      (error.message || error.code) +
+      ". Kartani yangilab tekshiring; " +
+      "zakazni qayta yaratmang.";
+  } finally {
+    ecoDetailSaving = false;
+
+    save.disabled = false;
+    close.disabled = false;
+    refresh.disabled = false;
+    address.disabled = false;
+    url.disabled = false;
+  }
+
+  if (
+    saved &&
+    token === ecoDetailToken &&
+    auth.currentUser?.uid ===
+      "xtD3NXgcHcbKRWx9WTclzNXMn4S2"
+  ) {
+    await ecoOpenOrderDetail(
+      id,
+      ecoDetailOrigin,
+      "Manzil va lokatsiya SAQLANDI."
+    );
+  }
+};
+
+/* Saqlangan materiallar jadvali */
+
+ecoD(
+  "h3",
+  "Saqlangan materiallar hisobi"
+);
+
+const materials = Array.isArray(
+  z.materialHisobi?.qatorlar
+)
+  ? z.materialHisobi.qatorlar
+  : [];
+
+if (!materials.length) {
+  ecoD(
+    "p",
+    "Material hisobi hali saqlanmagan."
+  );
+} else {
+  const wrap = ecoD("div", null);
+
+  wrap.style.overflowX = "auto";
+
+  const mt = ecoD(
+    "table",
+    null,
+    wrap
+  );
+
+  mt.style.cssText =
+    "width:100%;border-collapse:collapse";
+
+  const tableHead = ecoD(
+    "thead",
+    null,
+    mt
+  );
+
+  const head = ecoD(
+    "tr",
+    null,
+    tableHead
+  );
+
+  const headers = [
+    "Material",
+    "Birlik",
+    "Miqdor",
+    "Narx",
+    "Summa"
+  ];
+
+  for (const heading of headers) {
+    ecoD("th", heading, head);
+  }
+
+  const tableBody = ecoD(
+    "tbody",
+    null,
+    mt
+  );
+
+  for (const material of materials) {
+    const tr = ecoD(
+      "tr",
+      null,
+      tableBody
+    );
+
+    const rowValues = [
+      material.nom || "—",
+      material.birlik || "—",
+      material.miqdor ?? "—",
+      cash(material.narx),
+
+      cash(
+        material.summaHisob == null
+          ? null
+          : material.summaHisob / 100
+      )
+    ];
+
+    for (const value of rowValues) {
+      ecoD("td", value, tr);
+    }
+  }
+
+  const materialTotal =
+    z.materialHisobi.jamiHisob;
+
+  ecoD(
+    "p",
+    "Material jami: " +
+    cash(
+      materialTotal == null
+        ? null
+        : materialTotal / 100
+    )
+  );
+}
+
+ecoD(
+  "p",
+  "Bu bosqichga rasm/chizma fayl yuklash kiritilmagan."
+);
+
+close.focus();
+} /* ecoDetailDraw funksiyasi tugadi */
+
+/* 14-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
 /* Zakaz kartasini ochish */
 
   async function ecoOpenOrderDetail(
@@ -3317,88 +3529,269 @@ tableBody
         }
       }
 
-      /* 19-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-    
-"topshirilgan",
-                  "bekor_qilindi",
-                  "bekor"
-                ];
+      /* 19-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. *//* Usta kartasidagi tugmalar */
 
-                if (
-                  joriy.arxivlangan === true ||
-                  joriy.arxiv === true ||
-                  yopiqHolatlar.includes(
-                    joriy.holat
-                  )
-                ) {
-                  throw new Error(
-                    "Arxivdagi, topshirilgan yoki " +
-                    "bekor qilingan zakazni " +
-                    "biriktirib bo‘lmaydi."
-                  );
-                }
+  const biriktirBtn = tugmaYarat(
+    "Zakaz biriktirish"
+  );
 
-                const ids = Array.isArray(
-                  joriy.ustaIds
-                )
-                  ? [...joriy.ustaIds]
-                  : [];
+  const korsatBtn = tugmaYarat(
+    "Zakazlarini ko‘rish"
+  );
 
-                if (ids.includes(usta.id)) {
-                  throw new Error(
-                    "Bu zakaz ustaga " +
-                    "avval biriktirilgan."
-                  );
-                }
+  const ochirBtn = tugmaYarat(
+    "Ustani o‘chirish"
+  );
 
-                const biriktirishlar = {
-                  ...(
-                    joriy.ustaBiriktirishlar ||
-                    {}
-                  )
-                };
+  ochirBtn.style.color = "#b91c1c";
 
-                ids.push(usta.id);
+  /* Ustaning zakazlarini ko‘rsatish */
 
-                biriktirishlar[usta.id] = {
-                  ism: u.ism,
-                  kasb: u.kasb,
+  korsatBtn.addEventListener(
+    "click",
+    async () => {
+      korsatBtn.disabled = true;
 
-                  biriktirilganVaqt:
-                    serverTimestamp(),
+      try {
+        await zakazlarniKorsat();
+      } catch (error) {
+        xatoKorsat(error);
+      } finally {
+        korsatBtn.disabled = false;
+      }
+    }
+  );
 
-                  biriktirganUid: adminUid
-                };
+  /* Zakazni ustaga biriktirish */
 
-                transaction.update(
-                  zakazHujjati.ref,
-                  {
-                    ustaIds: ids,
+  biriktirBtn.addEventListener(
+    "click",
+    async () => {
+      if (
+        auth.currentUser?.uid !== adminUid
+      ) {
+        xatoKorsat(
+          new Error(
+            "Admin hisobiga kiring."
+          )
+        );
 
-                    ustaBiriktirishlar:
-                      biriktirishlar
-                  }
-                );
-              }
-            );
+        return;
+      }
 
-            await zakazlarniKorsat();
-
-            xabar.style.color = "green";
-
-            xabar.textContent =
-              "Zakaz №" +
-              String(raqam).padStart(4, "0") +
-              " ustaga biriktirildi.";
-          } catch (error) {
-            xatoKorsat(error);
-          } finally {
-            biriktirBtn.disabled = false;
-          }
-        }
+      const matn = window.prompt(
+        (usta.ism || "Usta") +
+        " uchun zakaz raqamini kiriting. " +
+        "Masalan: 12",
+        ""
       );
 
-      /* 20-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+      if (matn === null) return;
+
+      const raqam = Number(
+        matn.trim()
+      );
+
+      if (
+        !Number.isSafeInteger(raqam) ||
+        raqam < 1
+      ) {
+        xatoKorsat(
+          new Error(
+            "Zakaz raqamini to‘g‘ri kiriting."
+          )
+        );
+
+        return;
+      }
+
+      biriktirBtn.disabled = true;
+
+      xabar.style.color = "#164e63";
+
+      xabar.textContent =
+        "Zakaz qidirilmoqda...";
+
+      try {
+        const natija = await getDocs(
+          query(
+            collection(db, "zakazlar"),
+            where(
+              "zakazRaqami",
+              "==",
+              raqam
+            )
+          )
+        );
+
+        if (natija.size !== 1) {
+          throw new Error(
+            natija.empty
+              ? "Bu raqamli zakaz topilmadi."
+              : "Bu raqam bilan bir nechta " +
+                "zakaz topildi."
+          );
+        }
+
+        const zakazHujjati =
+          natija.docs[0];
+
+        const z = zakazHujjati.data();
+
+        const tasdiq = window.confirm(
+          "Usta: " +
+          (usta.ism || "—") +
+          "\nIshi: " +
+          (kasbNomlari[usta.kasb] || "—") +
+          "\nZakaz №" +
+          String(raqam).padStart(4, "0") +
+          "\nMijoz: " +
+          (z.ism || "—") +
+          "\nMebel: " +
+          (z.mebel || "—") +
+          "\n\nShu ustaga biriktirilsinmi?"
+        );
+
+        if (!tasdiq) {
+          xabar.textContent =
+            "Biriktirish bekor qilindi.";
+
+          return;
+        }
+
+        await runTransaction(
+          db,
+          async transaction => {
+            const ustaRef = doc(
+              db,
+              "ustalar",
+              usta.id
+            );
+
+            const ustaSnap =
+              await transaction.get(
+                ustaRef
+              );
+
+            const zakazSnap =
+              await transaction.get(
+                zakazHujjati.ref
+              );
+
+            if (
+              auth.currentUser?.uid !==
+              adminUid
+            ) {
+              throw new Error(
+                "Admin hisobiga qayta kiring."
+              );
+            }
+
+            if (
+              !ustaSnap.exists() ||
+              !zakazSnap.exists()
+            ) {
+              throw new Error(
+                "Usta yoki zakaz o‘chirilgan."
+              );
+            }
+
+            const u = ustaSnap.data();
+
+            const joriy =
+              zakazSnap.data();
+
+            if (u.faol !== true) {
+              throw new Error(
+                "Faol bo‘lmagan ustaga " +
+                "zakaz biriktirilmaydi."
+              );
+            }
+
+            const yopiqHolatlar = [
+              "topshirildi",
+              "topshirilgan",
+              "bekor_qilindi",
+              "bekor"
+            ];
+
+            if (
+              joriy.arxivlangan === true ||
+              joriy.arxiv === true ||
+              yopiqHolatlar.includes(
+                joriy.holat
+              )
+            ) {
+              throw new Error(
+                "Arxivdagi, topshirilgan yoki " +
+                "bekor qilingan zakazni " +
+                "biriktirib bo‘lmaydi."
+              );
+            }
+
+            const ids = Array.isArray(
+              joriy.ustaIds
+            )
+              ? [...joriy.ustaIds]
+              : [];
+
+            if (ids.includes(usta.id)) {
+              throw new Error(
+                "Bu zakaz ustaga " +
+                "avval biriktirilgan."
+              );
+            }
+
+            const biriktirishlar = {
+              ...(
+                joriy.ustaBiriktirishlar ||
+                {}
+              )
+            };
+
+            ids.push(usta.id);
+
+            biriktirishlar[usta.id] = {
+              ism: u.ism,
+              kasb: u.kasb,
+
+              biriktirilganVaqt:
+                serverTimestamp(),
+
+              biriktirganUid: adminUid
+            };
+
+            transaction.update(
+              zakazHujjati.ref,
+              {
+                ustaIds: ids,
+
+                ustaBiriktirishlar:
+                  biriktirishlar
+              }
+            );
+          }
+        );
+
+        await zakazlarniKorsat();
+
+        xabar.style.color = "green";
+
+        xabar.textContent =
+          "Zakaz №" +
+          String(raqam).padStart(4, "0") +
+          " ustaga biriktirildi.";
+      } catch (error) {
+        xatoKorsat(error);
+      } finally {
+        biriktirBtn.disabled = false;
+      }
+    }
+  );
+
+  /* 20-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+    
+
  /* Ustani ro‘yxatdan o‘chirish */
 
       ochirBtn.addEventListener(
@@ -3853,7 +4246,7 @@ tableBody
             {
               qoldiq100: yangi100
             }
-          )transaction.set(
+          );transaction.set(
             tarixRef,
             {
               materialId: material.id,
@@ -4259,6 +4652,161 @@ tableBody
   );
 
   /* 26-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+/* Materiallar katalogi jadvalini chizish */
+
+function materialJadvaliniChiz() {
+omborJadvaliniChiz();
+
+materialRoyxatiEl.replaceChildren();
+
+if (materiallar.length === 0) {
+  materialRoyxatiEl.textContent =
+    "Hali material qo‘shilmagan. " +
+    "Pastdagi formadan qo‘shing.";
+
+  materialJaminiHisobla();
+  return;
+}
+
+const jadval =
+  document.createElement("table");
+
+jadval.style.cssText =
+  "width:100%;border-collapse:collapse;";
+
+const bosh =
+  document.createElement("tr");
+
+for (
+  const t of [
+    "Material",
+    "Narxi",
+    "Soni",
+    "Summa",
+    ""
+  ]
+) {
+  const th =
+    document.createElement("th");
+
+  th.textContent = t;
+
+  th.style.cssText =
+    "text-align:left;padding:6px;" +
+    "border-bottom:2px solid #ccc;";
+
+  bosh.append(th);
+}
+
+jadval.append(bosh);
+
+for (const mat of materiallar) {
+  const tr =
+    document.createElement("tr");
+
+  const nomTd = materialKatak();
+
+  nomTd.textContent =
+    mat.nom + " (" + mat.birlik + ")";
+
+  /* Material narxi */
+
+  const narxTd = materialKatak();
+
+  const narxInput =
+    document.createElement("input");
+
+  narxInput.type = "number";
+  narxInput.min = "0";
+  narxInput.step = "0.01";
+  narxInput.value = mat.narx;
+  narxInput.style.width = "90px";
+
+  narxInput.addEventListener(
+    "change",
+    async () => {
+      const yangi =
+        Number(narxInput.value);
+
+      if (
+        !Number.isFinite(yangi) ||
+        yangi < 0
+      ) {
+        narxInput.value = mat.narx;
+        return;
+      }
+
+      try {
+        await updateDoc(
+          doc(db, "materiallar", mat.id),
+          {
+            narx: yangi,
+            yangilanganVaqt:
+              serverTimestamp()
+          }
+        );
+      } catch (error) {
+        materialXabarEl.style.color =
+          "red";
+
+        materialXabarEl.textContent =
+          "Narx saqlanmadi: " +
+          (error.code || error.message);
+      }
+    }
+  );
+
+  narxTd.append(narxInput);
+
+  /* Miqdor va qator summasi */
+
+  const soniTd = materialKatak();
+  const summaTd = materialKatak();
+
+  const soniInput =
+    document.createElement("input");
+
+  soniInput.type = "number";
+  soniInput.min = "0";
+  soniInput.step = "0.01";
+  soniInput.placeholder = "0";
+
+  soniInput.value =
+    materialMiqdorlari.get(mat.id) || "";
+
+  soniInput.style.width = "80px";
+
+  const yangila = () => {
+    const m = Number(soniInput.value);
+
+    materialMiqdorlari.set(
+      mat.id,
+      Number.isFinite(m) && m > 0
+        ? m
+        : 0
+    );
+
+    summaTd.textContent = (
+      materialTiyin(
+        mat.narx,
+        materialMiqdorlari.get(mat.id)
+      ) / 100
+    ).toFixed(2);
+
+    materialJaminiHisobla();
+  };
+
+  soniInput.addEventListener(
+    "input",
+    yangila
+  );
+
+  soniTd.append(soniInput);
+
+  yangila();
+
+  /* DAVOMI: mavjud materialni o‘chirish
+     tugmasi kodi pastda davom etadi. */
 /* Materialni katalogdan o‘chirish tugmasi */
 
       const ochirTd = materialKatak();
@@ -5120,93 +5668,264 @@ tableBody
         );
 
         /* 32-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-  qator.narx &&
-                  eskiQator.birlik ===
-                    qator.birlik
-              );
+ /* Qo‘shimcha materiallarni tranzaksiyada saqlash */
 
-              if (match) {
-                const jamiMiqdor100 =
-                  qty(match.miqdor) +
-                  miqdor100;
+    await runTransaction(
+      db,
+      async transaction => {
+        if (
+          auth.currentUser?.uid !== uid ||
+          op.uid !== uid
+        ) {
+          throw new Error(
+            "Hisob o‘zgardi. Qayta kiring."
+          );
+        }
 
-                match.miqdor = qty(
-                  jamiMiqdor100 / 100
-                ) / 100;
+        const snapshot =
+          await transaction.get(ref);
 
-                match.summaHisob = money(
-                  match.summaHisob +
-                  qator.summaHisob
-                );
-              } else {
-                /*
-                  Yangi material yoki boshqa
-                  narxdagi material alohida qoladi.
-                */
+        if (!snapshot.exists()) {
+          throw new Error(
+            "Zakaz topilmadi."
+          );
+        }
 
-                rows.push({
-                  ...qator
-                });
-              }
-            }
+        const zakaz = snapshot.data();
 
-            /* Eski va yangi qatorlarning jami */
+        if (
+          zakaz.zakazRaqami !== op.number
+        ) {
+          throw new Error(
+            "Zakaz raqami mos emas."
+          );
+        }
 
-            const total = rows.reduce(
-              (jami, qator) =>
-                money(
-                  jami + qator.summaHisob
-                ),
-              0
-            );
+        const old =
+          zakaz.materialHisobi || {};
 
-            if (
-              auth.currentUser?.uid !== uid
-            ) {
-              throw new Error(
-                "Hisob o‘zgardi. Qayta kiring."
-              );
-            }
+        /* Oldin bajarilgan amallar */
 
-            /*
-              Barcha tekshiruvlar tugagach,
-              ombor va zakazni yozamiz.
-            */
+        const done = Array.isArray(
+          old.qoshishAmallari
+        )
+          ? [...old.qoshishAmallari]
+          : [];
 
-            for (const yozuv of writes) {
-              transaction.update(
-                yozuv.ref,
-                {
-                  qoldiq100: yozuv.next
-                }
-              );
-            }
+        if (done.includes(op.id)) {
+          return;
+        }
 
-            transaction.update(
-              ref,
-              {
-                materialHisobi: {
-                  ...old,
+        if (
+          zakaz.arxivlangan === true ||
+          zakaz.arxiv === true ||
+          [
+            "topshirildi",
+            "topshirilgan",
+            "bekor_qilindi",
+            "bekor"
+          ].includes(zakaz.holat)
+        ) {
+          throw new Error(
+            "Arxivdagi, topshirilgan yoki " +
+            "bekor qilingan zakazga " +
+            "material qo‘shilmaydi."
+          );
+        }
 
-                  qatorlar: rows,
-                  jamiHisob: total,
-                  pulBirligi: "TJS",
-                  userId: uid,
+        if (
+          old.qatorlar != null &&
+          !Array.isArray(old.qatorlar)
+        ) {
+          throw new Error(
+            "Eski materiallar hisobi noto‘g‘ri."
+          );
+        }
 
-                  yangilanganVaqt:
-                    serverTimestamp(),
+        const rows = (
+          old.qatorlar || []
+        ).map(qator => ({ ...qator }));
 
-                  qoshishAmallari: [
-                    ...done,
-                    op.id
-                  ]
-                }
-              }
+        /* Eski hisobni tekshirish */
+
+        let oldTotal = 0;
+
+        for (const qator of rows) {
+          if (
+            typeof qator.materialId !== "string" ||
+            !qator.materialId ||
+            !Number.isFinite(qator.narx) ||
+            qator.narx < 0
+          ) {
+            throw new Error(
+              "Eski material yozuvi noto‘g‘ri."
             );
           }
+
+          const miqdor100 =
+            qty(qator.miqdor);
+
+          const summa =
+            money(qator.summaHisob);
+
+          if (
+            summa !==
+            Math.round(
+              qator.narx * miqdor100
+            )
+          ) {
+            throw new Error(
+              "Eski material miqdori va " +
+              "summasi mos emas."
+            );
+          }
+
+          oldTotal = money(
+            oldTotal + summa
+          );
+        }
+
+        if (
+          old.jamiHisob != null &&
+          money(old.jamiHisob) !== oldTotal
+        ) {
+          throw new Error(
+            "Eski materiallar jami mos emas. " +
+            "Avval hisobni tekshiring."
+          );
+        }
+
+        const writes = [];
+
+        /* Avval barcha ombor qoldiqlarini o‘qish */
+
+        for (const qator of op.rows) {
+          const miqdor100 =
+            qty(qator.miqdor);
+
+          const qoldiqRef = doc(
+            db,
+            "omborQoldiqlari",
+            qator.materialId
+          );
+
+          const qoldiqSnap =
+            await transaction.get(
+              qoldiqRef
+            );
+
+          if (!qoldiqSnap.exists()) {
+            throw new Error(
+              qator.nom +
+              ": boshlang‘ich ombor " +
+              "qoldig‘i kiritilmagan."
+            );
+          }
+
+          const current =
+            qoldiqSnap.data().qoldiq100;
+
+          if (
+            !Number.isSafeInteger(current) ||
+            current < 0 ||
+            current > 1000000000 ||
+            current < miqdor100
+          ) {
+            throw new Error(
+              qator.nom +
+              ": ombor qoldig‘i yetarli " +
+              "emas yoki noto‘g‘ri."
+            );
+          }
+
+          writes.push({
+            ref: qoldiqRef,
+            next: current - miqdor100
+          });
+
+          /* Mos qatorga miqdorni qo‘shish */
+
+          const match = rows.find(
+            eskiQator =>
+              eskiQator.materialId ===
+                qator.materialId &&eskiQator.narx ===
+                qator.narx &&
+              eskiQator.birlik ===
+                qator.birlik
+          );
+
+          if (match) {
+            const jamiMiqdor100 =
+              qty(match.miqdor) +
+              miqdor100;
+
+            const yangiMiqdor =
+              jamiMiqdor100 / 100;
+
+            qty(yangiMiqdor);
+
+            match.miqdor = yangiMiqdor;
+
+            match.summaHisob = money(
+              match.summaHisob +
+              qator.summaHisob
+            );
+          } else {
+            rows.push({ ...qator });
+          }
+        }
+
+        const total = rows.reduce(
+          (jami, qator) =>
+            money(
+              jami + qator.summaHisob
+            ),
+          0
         );
 
-        /* 33-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+        if (
+          auth.currentUser?.uid !== uid
+        ) {
+          throw new Error(
+            "Hisob o‘zgardi. Qayta kiring."
+          );
+        }
+
+        /* O‘qish va tekshiruvlardan keyin yozish */
+
+        for (const yozuv of writes) {
+          transaction.update(
+            yozuv.ref,
+            {
+              qoldiq100: yozuv.next
+            }
+          );
+        }
+
+        transaction.update(
+          ref,
+          {
+            materialHisobi: {
+              ...old,
+              qatorlar: rows,
+              jamiHisob: total,
+              pulBirligi: "TJS",
+              userId: uid,
+
+              yangilanganVaqt:
+                serverTimestamp(),
+
+              qoshishAmallari: [
+                ...done,
+                op.id
+              ]
+            }
+          }
+        );
+      }
+    );
+
+    /* 33-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
   /* Saqlash tasdiqlandi */
 
         localStorage.removeItem(
