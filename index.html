@@ -7822,6 +7822,97 @@ for (const mat of materiallar) {
                   katak.appendChild(tanlash);
 
                 /* 46-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+    } else if (indeks === 9) {
+              /* To‘lovlar tugmasi */
+
+              const avansTugma =
+                document.createElement("button");
+
+              avansTugma.type = "button";
+              avansTugma.textContent = String(qiymat);
+
+              avansTugma.title =
+                "To‘lovlar tarixi va qo‘shimcha to‘lov";
+
+              avansTugma.style.cssText =
+                "border:0;" +
+                "background:transparent;" +
+                "color:#1565c0;" +
+                "text-decoration:underline;" +
+                "cursor:pointer;" +
+                "font:inherit;" +
+                "padding:8px;";
+
+              avansTugma.addEventListener(
+                "click",
+                async () => {
+                  const jamiAvans =
+                    Number(zakaz.avans ?? 0);
+
+                  const tarix = Array.isArray(
+                    zakaz.tolovlarTarixi
+                  )
+                    ? zakaz.tolovlarTarixi
+                    : [];
+
+                  const pul = son =>
+                    Number(son).toFixed(2);
+
+                  const tarixQatorlari = [];
+
+                  const tarixJami = tarix.reduce(
+                    (jami, tolov) =>
+                      jami + Number(tolov.summa || 0),
+                    0
+                  );
+
+                  const oldingiAvans =
+                    Math.round(
+                      (jamiAvans - tarixJami) * 100
+                    ) / 100;
+
+                  if (oldingiAvans > 0) {
+                    tarixQatorlari.push(
+                      "Sana noma’lum — " +
+                      pul(oldingiAvans) +
+                      " somoniy — Oldingi avans"
+                    );
+                  }
+
+                  for (const tolov of tarix) {
+                    const vaqt = tolov.sana
+                      ? new Date(
+                          tolov.sana
+                        ).toLocaleString("uz-UZ")
+                      : "Sana noma’lum";
+
+                    tarixQatorlari.push(
+                      vaqt +
+                      " — " +
+                      pul(tolov.summa) +
+                      " somoniy"
+                    );
+                  }
+
+                  const narxBor =
+                    zakaz.narx != null;
+
+                  const qoldiq = narxBor
+                    ? pul(
+                        Number(zakaz.narx) -
+                        jamiAvans
+                      )
+                    : "Narx kiritilmagan";
+
+                  const matn = window.prompt(
+                    "Zakaz: " + raqam +
+                    "\nZakazchi: " +
+                    (zakaz.ism || "—") +
+                    "\nNarx: " +
+                    (narxBor ? pul(zakaz.narx) : "—") +
+                    "\nJami to‘langan: " +
+                    pul(jamiAvans) +
+                    "\nQoldiq: " + qoldiq +
     "\n\nTO‘LOVLAR TARIXI:\n" +
                           (
                             tarixQatorlari.join(
@@ -7909,77 +8000,156 @@ for (const mat of materiallar) {
                       }
 
                       /* 47-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-      );
-                            }
+   /* Qo‘shimcha to‘lovni saqlash */
 
-                            const saqlanganTarix =
-                              Array.isArray(
-                                malumot
-                                  .tolovlarTarixi
-                              )
-                                ? malumot
-                                    .tolovlarTarixi
-                                : [];
+                  avansTugma.disabled = true;
 
-                            transaction.update(
-                              zakazRef,
-                              {
-                                avans:
-                                  jamiTiyin / 100,
+                  const yangiYozuv = {
+                    summa: yangiTolov,
+                    sana: new Date().toISOString()
+                  };
 
-                                qolganSumma:
-                                  (
-                                    narxTiyin -
-                                    jamiTiyin
-                                  ) / 100,
+                  try {
+                    await runTransaction(
+                      db,
+                      async transaction => {
+                        const zakazRef = doc(
+                          db,
+                          "zakazlar",
+                          zakaz.id
+                        );
 
-                                tolovlarTarixi: [
-                                  ...saqlanganTarix,
-                                  yangiYozuv
-                                ]
-                              }
-                            );
+                        const snapshot =
+                          await transaction.get(
+                            zakazRef
+                          );
+
+                        if (!snapshot.exists()) {
+                          throw new Error(
+                            "Zakaz topilmadi."
+                          );
+                        }
+
+                        const malumot =
+                          snapshot.data();
+
+                        const narx =
+                          Number(malumot.narx);
+
+                        const avans = Number(
+                          malumot.avans ?? 0
+                        );
+
+                        if (
+                          malumot.narx == null ||
+                          !Number.isFinite(narx) ||
+                          narx < 0 ||
+                          !Number.isFinite(avans) ||
+                          avans < 0
+                        ) {
+                          throw new Error(
+                            "Zakaz narxi va " +
+                            "avansini tekshiring. " +
+                            "Narx kiritilgan " +
+                            "bo‘lishi kerak."
+                          );
+                        }
+
+                        const narxTiyin =
+                          Math.round(narx * 100);
+
+                        const avansTiyin =
+                          Math.round(avans * 100);
+
+                        const jamiTiyin =
+                          avansTiyin + yangiTiyin;
+
+                        if (
+                          !Number.isSafeInteger(
+                            jamiTiyin
+                          )
+                        ) {
+                          throw new Error(
+                            "Summa juda katta."
+                          );
+                        }
+
+                        if (
+                          jamiTiyin > narxTiyin
+                        ) {
+                          throw new Error(
+                            "To‘lov qoldiqdan " +
+                            "oshib ketdi. Qoldiq: " +
+                            pul(
+                              (
+                                narxTiyin -
+                                avansTiyin
+                              ) / 100
+                            ) +
+                            " somoniy."
+                          );
+                        }
+
+                        const saqlanganTarix =
+                          Array.isArray(
+                            malumot.tolovlarTarixi
+                          )
+                            ? malumot.tolovlarTarixi
+                            : [];
+
+                        transaction.update(
+                          zakazRef,
+                          {
+                            avans:
+                              jamiTiyin / 100,
+
+                            qolganSumma:
+                              (
+                                narxTiyin -
+                                jamiTiyin
+                              ) / 100,
+
+                            tolovlarTarixi: [
+                              ...saqlanganTarix,
+                              yangiYozuv
+                            ]
                           }
                         );
-
-                        alert(
-                          "Qo‘shimcha to‘lov " +
-                          "saqlandi."
-                        );
-
-                      } catch (error) {
-                        alert(
-                          "To‘lov saqlanmadi: " +
-                          (
-                            error.message ||
-                            error.code
-                          )
-                        );
-
-                      } finally {
-                        avansTugma.disabled =
-                          false;
                       }
+                    );
 
-                    }
-                  );
-
-                  katak.appendChild(
-                    avansTugma
-                  );
-
-                } else {
-                  /* Boshqa ustunlar */
-
-                  katak.textContent =
-                    String(qiymat);
+                    alert(
+                      "Qo‘shimcha to‘lov saqlandi."
+                    );
+                  } catch (error) {
+                    alert(
+                      "To‘lov saqlanmadi: " +
+                      (error.message ||
+                        error.code
+                      )
+                    );
+                  } finally {
+                    avansTugma.disabled = false;
+                  }
                 }
+              );
 
-                qator.appendChild(katak);
+              katak.appendChild(
+                avansTugma
+              );
 
-              } /* Kataklar sikli tugadi */
+            } else {
+              /* Boshqa ustunlar */
 
-              /* 48-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+              katak.textContent =
+                String(qiymat);
+            }
+
+            qator.appendChild(katak);
+
+          } /* Kataklar sikli tugadi */
+
+          /* 48-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */ 
   /* Zakaz amallari katagi */
 
               const amalKatagi =
@@ -8261,71 +8431,207 @@ for (const mat of materiallar) {
               );
 
               /* 50-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
-  display: none !important;
-                      }
+/* Zakaz hisobini PDF chiqarish tugmasi */
 
-                      thead {
-                        display: table-header-group;
-                      }
+          const pdfTugma =
+            document.createElement("button");
 
-                      tr {
-                        break-inside: avoid;
-                      }
-                    }
-                  `;
+          pdfTugma.type = "button";
+          pdfTugma.textContent = "PDF";
 
-                  hujjat.head.append(
-                    meta,
-                    viewport,
-                    uslub
-                  );
+          pdfTugma.title =
+            "Zakaz va materiallar hisobini chiqarish";
 
-                  /* Hisob elementlarini
-                     yaratish yordamchisi */
+          pdfTugma.style.cssText =
+            "border:0;" +
+            "background:transparent;" +
+            "color:#7c3aed;" +
+            "text-decoration:underline;" +
+            "cursor:pointer;" +
+            "font:inherit;" +
+            "padding:8px;";
 
-                  const element = (
-                    teg,
-                    matn,
-                    ota,
-                    sinf
-                  ) => {
-                    const el =
-                      hujjat.createElement(teg);
+          pdfTugma.addEventListener(
+            "click",
+            () => {
+              const oyna = window.open(
+                "",
+                "_blank"
+              );
 
-                    if (matn != null) {
-                      el.textContent =
-                        String(matn);
-                    }
+              if (!oyna) {
+                alert(
+                  "Hisob oynasi ochilmadi. " +
+                  "Brauzerda ushbu sayt uchun " +
+                  "yangi oynalarni ochishga " +
+                  "ruxsat bering."
+                );
 
-                    if (sinf) {
-                      el.className = sinf;
-                    }
+                return;
+              }
 
-                    if (ota) {
-                      ota.appendChild(el);
-                    }
+              oyna.opener = null;
 
-                    return el;
-                  };
+              const hujjat = oyna.document;
 
-                  /* Pul qiymatini formatlash */
+              hujjat.documentElement.lang = "uz";
 
-                  const pul = (qiymat) => {
-                    if (
-                      qiymat == null ||
-                      qiymat === ""
-                    ) {
-                      return "—";
-                    }
+              hujjat.title =
+                "Zakaz-" + raqam + "-hisobi";
 
-                    const son = Number(qiymat);
+              hujjat.head.replaceChildren();
+              hujjat.body.replaceChildren();
 
-                    return Number.isFinite(son)
-                      ? son.toFixed(2)
-                      : "—";
-                  };
+              const meta =
+                hujjat.createElement("meta");
 
-                  /* 51-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
+              meta.setAttribute(
+                "charset",
+                "utf-8"
+              );
+
+              const viewport =
+                hujjat.createElement("meta");
+
+              viewport.name = "viewport";
+
+              viewport.content =
+                "width=device-width, initial-scale=1";
+
+              const uslub =
+                hujjat.createElement("style");
+
+              uslub.textContent = `
+                body {
+                  font-family: Arial, sans-serif;
+                  color: #172033;
+                  margin: 24px;
+                  line-height: 1.5;
+                }
+
+                h1 {
+                  font-size: 24px;
+                  margin-bottom: 4px;
+                }
+
+                h2 {
+                  font-size: 18px;
+                  margin-top: 28px;
+                }
+
+                .izoh {
+                  color: #64748b;
+                  font-size: 13px;
+                }
+
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-top: 12px;
+                }
+
+                th, td {
+                  border: 1px solid #cbd5e1;
+                  padding: 8px;
+                  text-align: left;
+                  vertical-align: top;
+                  overflow-wrap: anywhere;
+                  white-space: pre-wrap;
+                }
+
+                th {
+                  background: #f1f5f9;
+                }
+
+                .son {
+                  text-align: right;
+                }
+
+                .jami {
+                  text-align: right;
+                  font-weight: bold;
+                }
+
+                button {
+                  padding: 10px 16px;
+                  cursor: pointer;
+                  margin: 12px 0;
+                }
+
+                @page {
+                  size: A4;
+                  margin: 14mm;
+                }
+
+                @media print {
+                  body {
+                    margin: 0;
+                    font-size: 11px;
+                  }
+
+                  .ekran {
+                    display: none !important;
+                  }
+
+                  thead {
+                    display: table-header-group;
+                  }
+
+                  tr {
+                    break-inside: avoid;
+                  }
+                }
+              `;
+
+              hujjat.head.append(
+                meta,
+                viewport,
+                uslub
+              );
+
+              /* Hisob elementlarini yaratish */
+
+              const element = (
+                teg,
+                matn,
+                ota,
+                sinf
+              ) => {const el =
+                  hujjat.createElement(teg);
+
+                if (matn != null) {
+                  el.textContent = String(matn);
+                }
+
+                if (sinf) {
+                  el.className = sinf;
+                }
+
+                if (ota) {
+                  ota.appendChild(el);
+                }
+
+                return el;
+              };
+
+              /* Pul qiymatini formatlash */
+
+              const pul = qiymat => {
+                if (
+                  qiymat == null ||
+                  qiymat === ""
+                ) {
+                  return "—";
+                }
+
+                const son = Number(qiymat);
+
+                return Number.isFinite(son)
+                  ? son.toFixed(2)
+                  : "—";
+              };
+
+              /* 51-QISM TUGADI. DAVOMI PASTIGA QO‘YILADI. */
                   /* Holatlarning o‘qiladigan nomlari */
 
                   const holatNomlari = {
