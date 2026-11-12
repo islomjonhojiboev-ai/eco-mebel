@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Eco Mebel — Shkaf konstruktori</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f2f5f9;color:#1e293b;font:16px Arial,sans-serif;padding:20px}main{max-width:1100px;margin:auto}.layout{display:grid;grid-template-columns:280px 1fr;gap:20px}.box{background:white;border:1px solid #cbd5e1;border-radius:12px;padding:20px}label{display:block;margin:12px 0}input,select,button{font:inherit;padding:10px;width:100%;margin-top:5px}button{background:#087f9c;color:white;border:0;border-radius:8px;cursor:pointer}svg{display:block;width:100%;height:580px}small{line-height:1.6}#error{color:#b91c1c}@media(max-width:700px){.layout{grid-template-columns:1fr}svg{height:460px}}</style></head>
+<body><main><a href="./index.html">← Eco Mebel</a><h1>Shkaf konstruktori</h1><p>1-versiya: old ko‘rinishdagi 2D eskiz. Bazaga yozmaydi, ombor va zakazlarni o‘zgartirmaydi.</p>
+<div class="layout"><form class="box" id="form">
+<label>Eni (mm)<input id="w" type="number" min="400" max="4000" step="1" value="1200" required></label>
+<label>Bo‘yi (mm)<input id="h" type="number" min="500" max="3000" step="1" value="2200" required></label>
+<label>Chuqurligi (mm)<input id="d" type="number" min="200" max="1000" step="1" value="600" required></label>
+<label>Plita qalinligi (mm)<input id="t" type="number" min="10" max="30" step="1" value="18" required></label>
+<label>Teng bo‘limlar soni<input id="n" type="number" min="1" max="6" step="1" value="2" required></label>
+<label>Har bo‘limdagi tokchalar<input id="s" type="number" min="0" max="8" step="1" value="3" required></label>
+<label>Rang<input id="color" type="color" value="#e5d4b5"></label>
+<label>Ko‘rinish<select id="view"><option value="inside">Ichki tuzilish</option><option value="doors">Eshiklar (har bo‘limga bitta)</option></select></label>
+<button type="submit">Chizmani yangilash</button><p id="error" role="alert"></p>
+</form><section class="box"><svg id="drawing" viewBox="0 0 720 700" role="img" aria-label="Shkafning old ko‘rinishi"></svg><p id="info"></p><small>Bu ishlab chiqarish yoki kesim hujjati emas. Sokol, orqa devor, eshik oralig‘i, kromka va furnitura hisobi kiritilmagan. Chuqurlik old ko‘rinishda tasvirlanmaydi. Ichki o‘lchamlar ushbu sodda korpus modeli uchun hisoblangan.</small></section></div></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const svg=$('drawing');
+function node(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;svg.append(e);return e;}
+function draw(){
+ $('error').textContent='';
+ if(!$('form').reportValidity())return;
+ const [w,h,d,t,n,s]=['w','h','d','t','n','s'].map(id=>Number($(id).value));
+ if(![w,h,d,t,n,s].every(Number.isSafeInteger)){ $('error').textContent='Butun son kiriting.';return;}
+ const cw=(w-(n+1)*t)/n, ch=h-2*t, gap=(ch-s*t)/(s+1);
+ if(cw<100||gap<80){$('error').textContent='Bo‘lim yoki tokcha oralig‘i juda kichik. O‘lchamlarni kattalashtiring yoki sonini kamaytiring.';return;}
+ svg.replaceChildren();
+ const scale=Math.min(540/w,540/h), W=w*scale,H=h*scale,T=t*scale,x=(720-W)/2,y=(700-H)/2;
+ const rect=(a,b,c,e,fill)=>node('rect',{x:a,y:b,width:c,height:e,fill,stroke:'#334155','stroke-width':1});
+ const line=(a,b,c,e)=>node('line',{x1:a,y1:b,x2:c,y2:e,stroke:'#334155','stroke-width':1});
+ const label=(a,b,text)=>node('text',{x:a,y:b,'text-anchor':'middle','font-size':16,fill:'#172033'},text);
+ const color=$('color').value;
+ rect(x,y,W,H,'#fafafa');rect(x,y,T,H,color);rect(x+W-T,y,T,H,color);rect(x+T,y,W-2*T,T,color);rect(x+T,y+H-T,W-2*T,T,color);
+ for(let i=1;i<n;i++)rect(x+(t+i*cw+(i-1)*t)*scale,y+T,T,H-2*T,color);
+ for(let i=0;i<n;i++)for(let j=1;j<=s;j++)rect(x+(t+i*(cw+t))*scale,y+(t+j*gap+(j-1)*t)*scale,cw*scale,T,color);
+ if($('view').value==='doors')for(let i=0;i<n;i++){const dx=x+i*W/n;rect(dx,y,W/n,H,color);const hx=dx+W/n-12;node('line',{x1:hx,y1:y+H*.42,x2:hx,y2:y+H*.58,stroke:'#172033','stroke-width':4});}
+ line(x,y-22,x+W,y-22);line(x,y-28,x,y-16);line(x+W,y-28,x+W,y-16);label(360,y-34,w+' mm');
+ line(x-24,y,x-24,y+H);line(x-30,y,x-18,y);line(x-30,y+H,x-18,y+H);node('text',{x:x-38,y:y+H/2,transform:'rotate(-90 '+(x-38)+' '+(y+H/2)+')','text-anchor':'middle','font-size':16},h+' mm');
+ $('info').textContent='O‘lcham: '+w+' × '+h+' × '+d+' mm. Har bo‘lim ichki eni: '+cw.toFixed(1)+' mm. Tokchalar orasidagi sof balandlik: '+gap.toFixed(1)+' mm.';
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();draw();});
+$('color').addEventListener('input',draw);$('view').addEventListener('change',draw);draw();
+</script></body></html>
