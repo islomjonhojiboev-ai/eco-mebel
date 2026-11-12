@@ -17456,5 +17456,205 @@ onAuthStateChanged(auth, () => {
     .forEach(panel => panel.remove());
 });
 } /* Modulning himoya bloki tugadi */</script>
+<!-- Omborda kirim tarixini ko‘rsatish -->
+<script type="module">
+import { getApp } from
+  "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+
+import { getAuth, onAuthStateChanged } from
+  "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+import {
+  getFirestore,
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocsFromServer
+} from
+  "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+const ombor = document.getElementById("omborBolimi");
+
+if (ombor && !document.getElementById("ecoKirimTarixi")) {
+  const app = getApp();
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const ADMIN = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+
+  const panel = document.createElement("details");
+  panel.id = "ecoKirimTarixi";
+  panel.style.cssText =
+    "margin-top:24px;padding:16px;border:1px solid #cbd5e1;" +
+    "border-radius:12px;background:white;color:#1e293b";
+
+  panel.innerHTML = `
+    <summary style="font-size:20px;cursor:pointer">
+      Kirim tarixi
+    </summary>
+
+    <p>
+      Eng so‘nggi 200 ta ombor amali ichidagi kirimlar.
+      Boshlang‘ich qoldiq va qoldiq tuzatishlari kiritilmaydi.
+    </p>
+
+    <button type="button" class="kirim-yangilash">
+      Tarixni yangilash
+    </button>
+
+    <p class="kirim-holat" role="status"></p>
+    <div class="kirim-jadval" style="overflow-x:auto"></div>
+  `;
+
+  ombor.append(panel);
+
+  const tugma = panel.querySelector(".kirim-yangilash");
+  const holat = panel.querySelector(".kirim-holat");
+  const joy = panel.querySelector(".kirim-jadval");
+
+  let avlod = 0;
+  let band = false;
+
+  function katak(qator, qiymat, sarlavha = false) {
+    const el = document.createElement(sarlavha ? "th" : "td");
+    el.textContent = String(qiymat ?? "");
+    el.style.cssText =
+      "padding:10px;border:1px solid #cbd5e1;" +
+      "text-align:left;vertical-align:top";
+    qator.append(el);
+  }
+
+  function miqdor(n) {
+    return Number.isSafeInteger(n)
+      ? (n / 100).toFixed(2)
+      : "Noto‘g‘ri ma’lumot";
+  }
+
+  async function yuklash() {
+    if (band || auth.currentUser?.uid !== ADMIN) return;
+
+    band = true;
+    tugma.disabled = true;
+    const token = ++avlod;
+
+    joy.replaceChildren();
+    holat.style.color = "#164e63";
+    holat.textContent = "Kirim tarixi yuklanmoqda...";
+
+    try {
+      const natija = await getDocsFromServer(
+        query(
+          collection(db, "omborTuzatishlari"),
+          orderBy("yaratilganVaqt", "desc"),
+          limit(200)
+        )
+      );
+
+      if (
+        token !== avlod ||
+        auth.currentUser?.uid !== ADMIN
+      ) return;
+
+      const kirimlar = natija.docs
+        .map(hujjat => hujjat.data())
+        .filter(yozuv => yozuv.turi === "kirim");
+
+      if (!kirimlar.length) {
+        holat.textContent =
+          "Eng so‘nggi 200 ta ombor amali orasida kirim topilmadi.";
+        return;
+      }
+
+      const jadval = document.createElement("table");
+      jadval.style.cssText =
+        "width:100%;border-collapse:collapse;font-size:14px";
+
+      const bosh = jadval.createTHead().insertRow();
+
+      for (const nom of [
+        "Sana",
+        "Material",
+        "Birlik",
+        "Oldingi qoldiq",
+        "Kirim",
+        "Keyingi qoldiq",
+        "Izoh"
+      ]) {
+        katak(bosh, nom, true);
+      }
+
+      const tana = jadval.createTBody();
+
+      for (const yozuv of kirimlar) {
+        const qator = tana.insertRow();
+        const sana = yozuv.yaratilganVaqt?.toDate?.();
+
+        const farq =
+          Number.isSafeInteger(yozuv.eski100) &&
+          Number.isSafeInteger(yozuv.yangi100)
+            ? yozuv.yangi100 - yozuv.eski100
+            : null;
+
+        katak(
+          qator,
+          sana
+            ? sana.toLocaleString("uz-UZ")
+            : "Sana noma’lum"
+        );
+
+        katak(qator, yozuv.nom);
+        katak(qator, yozuv.birlik);
+        katak(qator, miqdor(yozuv.eski100));
+        katak(qator, miqdor(farq));
+        katak(qator, miqdor(yozuv.yangi100));
+        katak(qator, yozuv.sabab);
+      }
+
+      joy.append(jadval);
+
+      holat.textContent =
+        ${kirimlar.length} ta kirim ko‘rsatildi.  +
+        "Yangi kirimdan keyin tarixni yangilang.";
+    } catch (error) {
+      if (
+        token !== avlod ||
+        auth.currentUser?.uid !== ADMIN
+      ) return;
+
+      holat.style.color = "#b91c1c";
+      holat.textContent =
+        "Kirim tarixi yuklanmadi: " +
+        (error.code || "") + " " + error.message;
+    } finally {
+      if (token === avlod) {
+        band = false;
+        tugma.disabled = auth.currentUser?.uid !== ADMIN;
+      }
+    }
+  }
+
+  tugma.addEventListener("click", yuklash);
+
+  panel.addEventListener("toggle", () => {
+    if (panel.open) yuklash();
+  });
+
+  onAuthStateChanged(auth, user => {
+    avlod++;
+    band = false;
+    joy.replaceChildren();
+
+    const admin = user?.uid === ADMIN;
+    panel.hidden = !admin;
+    tugma.disabled = !admin;
+    holat.textContent = admin
+      ? "Tarixni ko‘rish uchun panelni oching."
+      : "";
+
+    if (admin && panel.open) yuklash();
+  });
+}
+</script>
 </body>
 </html>
