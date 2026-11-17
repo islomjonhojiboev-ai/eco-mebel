@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eco Mebel — 3D konstruktor</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #eef3f6;
+      color: #203040;
+    }
+
+    header {
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid #dce5ea;
+    }
+
+    header h1 {
+      margin: 12px 0 6px;
+      font-size: 24px;
+    }
+
+    a { color: #087d85; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    h2 { margin-top: 0; font-size: 20px; }
+    h3 { font-size: 17px; }
+
+    label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    input, select, button {
+      font: inherit;
+      border-radius: 7px;
+      padding: 10px;
+      border: 1px solid #bdcbd3;
+    }
+
+    input, select {
+      display: block;
+      width: 100%;
+      margin-top: 5px;
+      min-width: 0;
+    }
+
+    input[type="checkbox"] {
+      display: inline-block;
+      width: auto;
+      margin-right: 6px;
+    }
+
+    input[type="color"] {
+      height: 42px;
+      padding: 4px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      background: #087d85;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: wait;
+    }
+
+    .mainButton {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    small {
+      display: block;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #586b78;
+      margin-bottom: 10px;
+    }
+
+    .stage {
+      position: sticky;
+      top: 12px;
+      align-self: start;
+      min-width: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    #viewer {
+      width: 100%;
+      height: 640px;
+      background: #e4edf1;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+
+    #error {
+      color: #b42318;
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+
+    #status {
+      white-space: pre-line;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    #doorSettings {
+      background: #f1f6f8;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    #doorSettings label:last-child {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 850px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { position: static; }
+      #viewer { height: 480px; }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head><body>
+  <header>
+    <a href="./index.html">← Bosh sahifa</a>
+    &nbsp; | &nbsp;
+    <a href="./dizayn.html">2D konstruktor</a>
+    <h1>Eco Mebel — 3D shkaf</h1>
+    <small>
+      Geometrik sinov konstruktori.
+      Ishlab chiqarishga tayyor kesim hujjati emas.
+    </small>
+  </header>
+
+  <main class="layout">
+    <form id="form" class="panel">
+      <h2>O‘lchamlar — mm</h2>
+
+      <div class="row">
+        <label>
+          Umumiy eni
+          <input id="width" type="number"
+            value="1800" min="500" max="6000" required>
+        </label>
+
+        <label>
+          Umumiy bo‘yi
+          <input id="height" type="number"
+            value="2400" min="700" max="3500" required>
+        </label>
+
+        <label>
+          Korpus chuqurligi
+          <input id="depth" type="number"
+            value="600" min="200" max="1200" required>
+        </label>
+
+        <label>
+          Plita qalinligi
+          <input id="thickness" type="number"
+            value="18" min="10" max="40" required>
+        </label>
+      </div>
+
+      <h3>Yon plankalar</h3>
+
+      <div class="row">
+        <label>
+          Chap planka eni
+          <input id="leftFiller" type="number"
+            value="30" min="0" max="1000" required>
+        </label>
+
+        <label>
+          O‘ng planka eni
+          <input id="rightFiller" type="number"
+            value="30" min="0" max="1000" required>
+        </label>
+      </div>
+
+      <small>
+        Yon plankalar umumiy en ichida hisoblanadi.
+        Ularning qalinligi korpus plitasiga teng.
+      </small>
+
+      <label>
+        <input id="socleEnabled" type="checkbox" checked>
+        Sokol qo‘shish
+      </label>
+
+      <label>
+        Sokol balandligi
+        <input id="socleHeight" type="number"
+          value="80" min="0" max="500" required>
+      </label>
+
+      <h3>Bo‘limlar va tokchalar</h3>
+
+      <label>
+        Bo‘limlar soni
+        <input id="sectionCount" type="number"
+          value="3" min="1" max="8" required>
+      </label>
+
+      <label>
+        Bo‘limlarning sof ichki eni
+        <input id="sectionWidths" type="text"
+          placeholder="Bo‘sh bo‘lsa — teng bo‘linadi">
+      </label>
+
+      <small>
+        Masalan: 500,600,568.
+        Qiymatlarni vergul bilan ajrating.
+        Kasr uchun nuqta ishlating.
+      </small>
+
+      <label>
+        Har bo‘limdagi tokchalar soni
+        <input id="shelfCounts" type="text"
+          value="2,4,3" required>
+      </label>
+
+      <small>
+        3 bo‘lim uchun: 2,4,3.
+        Tokcha kerak bo‘lmasa 0 yozing.
+        Bo‘limlar sonini o‘zgartirsangiz,
+        bu ro‘yxatni ham moslang.
+      </small>
+
+      <h3>Antresol</h3>
+
+      <label>
+        <input id="atticEnabled" type="checkbox" checked>
+        Antresol qo‘shish
+      </label>
+
+      <label>
+        Antresolning sof ichki balandligi
+        <input id="atticHeight" type="number"
+          value="400" min="100" max="1200" required>
+      </label>
+
+      <small>
+        Antresol pastdagi bo‘limlarga mos bo‘linadi.
+        Umumiy bo‘y o‘zgarmaydi.
+        Tokchalar soni faqat asosiy pastki qismlarga tegishli.
+      </small>
+
+      <h3>Eshiklar</h3>
+      <div id="doorSettings"></div>
+
+      <small>
+        Antresol eshiklari ham tegishli pastki
+        bo‘limning tanloviga mos bo‘ladi.
+        Bitta eshik dastasi o‘ngda joylashadi.
+      </small>
+
+      <div class="row">
+        <label>
+          Dasta uzunligi
+          <input id="handleLength" type="number"
+            value="160" min="40" max="1000" required>
+        </label>
+
+        <label>
+          Dasta chetdan
+          <input id="handleOffset" type="number"
+            value="35" min="15" max="150" required>
+        </label>
+
+        <label>
+          Eshik tirqishi
+          <input id="doorGap" type="number"
+            value="3" min="1" max="10" required>
+        </label>
+
+        <label>
+          Korpus rangi
+          <input id="bodyColor" type="color" value="#d9c6a5">
+        </label><body>
+  <header>
+    <a href="./index.html">← Bosh sahifa</a>
+    &nbsp; | &nbsp;
+    <a href="./dizayn.html">2D konstruktor</a>
+    <h1>Eco Mebel — 3D shkaf</h1>
+    <small>
+      Geometrik sinov konstruktori.
+      Ishlab chiqarishga tayyor kesim hujjati emas.
+    </small>
+  </header>
+
+  <main class="layout">
+    <form id="form" class="panel">
+      <h2>O‘lchamlar — mm</h2>
+
+      <div class="row">
+        <label>
+          Umumiy eni
+          <input id="width" type="number"
+            value="1800" min="500" max="6000" required>
+        </label>
+
+        <label>
+          Umumiy bo‘yi
+          <input id="height" type="number"
+            value="2400" min="700" max="3500" required>
+        </label>
+
+        <label>
+          Korpus chuqurligi
+          <input id="depth" type="number"
+            value="600" min="200" max="1200" required>
+        </label>
+
+        <label>
+          Plita qalinligi
+          <input id="thickness" type="number"
+            value="18" min="10" max="40" required>
+        </label>
+      </div>
+
+      <h3>Yon plankalar</h3>
+
+      <div class="row">
+        <label>
+          Chap planka eni
+          <input id="leftFiller" type="number"
+            value="30" min="0" max="1000" required>
+        </label>
+
+        <label>
+          O‘ng planka eni
+          <input id="rightFiller" type="number"
+            value="30" min="0" max="1000" required>
+        </label>
+      </div>
+
+      <small>
+        Yon plankalar umumiy en ichida hisoblanadi.
+        Ularning qalinligi korpus plitasiga teng.
+      </small>
+
+      <label>
+        <input id="socleEnabled" type="checkbox" checked>
+        Sokol qo‘shish
+      </label>
+
+      <label>
+        Sokol balandligi
+        <input id="socleHeight" type="number"
+          value="80" min="0" max="500" required>
+      </label>
+
+      <h3>Bo‘limlar va tokchalar</h3>
+
+      <label>
+        Bo‘limlar soni
+        <input id="sectionCount" type="number"
+          value="3" min="1" max="8" required>
+      </label>
+
+      <label>
+        Bo‘limlarning sof ichki eni
+        <input id="sectionWidths" type="text"
+          placeholder="Bo‘sh bo‘lsa — teng bo‘linadi">
+      </label>
+
+      <small>
+        Masalan: 500,600,568.
+        Qiymatlarni vergul bilan ajrating.
+        Kasr uchun nuqta ishlating.
+      </small>
+
+      <label>
+        Har bo‘limdagi tokchalar soni
+        <input id="shelfCounts" type="text"
+          value="2,4,3" required>
+      </label>
+
+      <small>
+        3 bo‘lim uchun: 2,4,3.
+        Tokcha kerak bo‘lmasa 0 yozing.
+        Bo‘limlar sonini o‘zgartirsangiz,
+        bu ro‘yxatni ham moslang.
+      </small>
+
+      <h3>Antresol</h3>
+
+      <label>
+        <input id="atticEnabled" type="checkbox" checked>
+        Antresol qo‘shish
+      </label>
+
+      <label>
+        Antresolning sof ichki balandligi
+        <input id="atticHeight" type="number"
+          value="400" min="100" max="1200" required>
+      </label>
+
+      <small>
+        Antresol pastdagi bo‘limlarga mos bo‘linadi.
+        Umumiy bo‘y o‘zgarmaydi.
+        Tokchalar soni faqat asosiy pastki qismlarga tegishli.
+      </small>
+
+      <h3>Eshiklar</h3>
+      <div id="doorSettings"></div>
+
+      <small>
+        Antresol eshiklari ham tegishli pastki
+        bo‘limning tanloviga mos bo‘ladi.
+        Bitta eshik dastasi o‘ngda joylashadi.
+      </small>
+
+      <div class="row">
+        <label>
+          Dasta uzunligi
+          <input id="handleLength" type="number"
+            value="160" min="40" max="1000" required>
+        </label>
+
+        <label>
+          Dasta chetdan
+          <input id="handleOffset" type="number"
+            value="35" min="15" max="150" required>
+        </label>
+
+        <label>
+          Eshik tirqishi
+          <input id="doorGap" type="number"
+            value="3" min="1" max="10" required>
+        </label>
+
+        <label>
+          Korpus rangi
+          <input id="bodyColor" type="color" value="#d9c6a5">
+        </label>
+        <label>
+          Eshik rangi
+          <input id="doorColor" type="color" value="#eee9df">
+        </label>
+      </div>
+
+      <label>
+        <input id="showDoors" type="checkbox" checked>
+        Eshiklar ko‘rinsin
+      </label>
+
+      <button id="buildButton" class="mainButton"
+        type="submit" disabled>
+        3D modelni yangilash
+      </button>
+
+      <p id="error" role="alert"></p>
+    </form>
+
+    <section class="panel stage">
+      <div class="toolbar">
+        <button type="button" data-view="iso">Umumiy</button>
+        <button type="button" data-view="front">Old</button>
+        <button type="button" data-view="side">Yon</button>
+        <button type="button" data-view="top">Tepa</button>
+      </div>
+
+      <div id="viewer"></div>
+
+      <p id="status" role="status">
+        3D kutubxona yuklanmoqda...
+      </p>
+
+      <small>
+        Bir barmoq bilan aylantiring.
+        Ikki barmoq bilan yaqinlashtiring yoki siljiting.
+        Ichini ko‘rish uchun “Eshiklar ko‘rinsin”
+        belgisini olib tashlang.
+      </small>
+
+      <small>
+        Chuqurlik korpus uchun beriladi.
+        Eshik va dastalar oldinga qo‘shimcha chiqadi.
+        Orqa devor, kromka, ilmoq va boshqa furnitura
+        hisoblari kiritilmagan. Loyiha sahifa
+        yangilanganda saqlanmaydi.
+      </small>
+    </section>
+  </main>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const number = id => Number($(id).value);
+
+    function updateDoorFields() {
+      const count = number("sectionCount");
+
+      if (!Number.isInteger(count) || count < 1 || count > 8) {
+        return;
+      }
+
+      const container = $("doorSettings");
+      const previous = [...container.querySelectorAll("select")]
+        .map(select => select.value);
+
+      container.replaceChildren();
+
+      for (let i = 0; i < count; i++) {
+        const label = document.createElement("label");
+        label.textContent = (i + 1) + "-bo‘lim eshigi";
+
+        const select = document.createElement("select");
+        select.id = "door-" + i;
+
+        [
+          ["0", "Eshiksiz"],
+          ["1", "Bitta eshik"],
+          ["2", "Juft eshik"]
+        ].forEach(([value, text]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = text;
+          select.append(option);
+        });
+
+        select.value = previous[i] ?? "2";
+        label.append(select);
+        container.append(label);
+      }
+    }
+
+    updateDoorFields();
+    $("sectionCount").addEventListener("input", updateDoorFields);
+
+    try {
+      const THREE = await import("three");
+
+      const { OrbitControls } = await import(
+        "three/addons/controls/OrbitControls.js"
+      );
+
+      const host = $("viewer");
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#e4edf1");
+
+      const camera = new THREE.PerspectiveCamera(
+        38, 1, 1, 100000
+      );
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true
+      });
+
+      renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio || 1, 2)
+      );
+
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      host.append(renderer.domElement);
+
+      const controls = new OrbitControls(
+        camera, renderer.domElement
+      );
+
+      controls.enableDamping = true;
+      controls.minDistance = 200;
+      controls.maxDistance = 30000;
+      scene.add(
+    new THREE.HemisphereLight(0xffffff, 0x667788, 2.5)
+  );
+
+  const light = new THREE.DirectionalLight(0xffffff, 3);
+  light.position.set(3000, 5000, 4000);
+  scene.add(light);
+
+  scene.add(
+    new THREE.GridHelper(
+      12000, 24, 0xa4b3bd, 0xd0dbe1
+    )
+  );
+
+  let model = null;
+  let dimensions = { w: 1800, h: 2400, d: 600 };
+
+  function resize() {
+    const w = host.clientWidth;
+    const h = host.clientHeight;
+
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  new ResizeObserver(resize).observe(host);
+  resize();
+
+  function setView(view) {
+    const { w, h, d } = dimensions;
+    const target = new THREE.Vector3(0, h / 2, 0);
+
+    const span = Math.max(
+      h,
+      w / Math.max(camera.aspect, 0.2),
+      d
+    );
+
+    const distance =
+      span /
+      (2 * Math.tan(
+        THREE.MathUtils.degToRad(camera.fov / 2)
+      )) * 1.5;
+
+    controls.target.copy(target);
+    camera.up.set(0, 1, 0);
+
+    if (view === "front") {
+      camera.position.set(0, h / 2, distance);
+    } else if (view === "side") {
+      camera.position.set(distance, h / 2, 0);
+    } else if (view === "top") {
+      camera.up.set(0, 0, -1);
+      camera.position.set(0, h / 2 + distance, 0.01);
+    } else {
+      camera.position.set(
+        distance * 0.7,
+        h / 2 + distance * 0.42,
+        distance * 0.85
+      );
+    }
+
+    camera.lookAt(target);
+    controls.update();
+  }
+
+  function readList(text, count, name, integersOnly) {
+    const parts = text.split(",").map(s => s.trim());
+
+    if (
+      parts.length !== count ||
+      parts.some(s => s === "")
+    ) {
+      throw new Error(
+        name + ": " + count + " ta qiymat kiriting."
+      );
+    }
+
+    const values = parts.map(Number);
+
+    if (values.some(value =>
+      !Number.isFinite(value) ||
+      value < 0 ||
+      (integersOnly && !Number.isInteger(value))
+    )) {
+      throw new Error(
+        name + ": qiymatlarni tekshiring."
+      );
+    }
+
+    return values;
+  }
+
+  function disposeModel(group) {
+    const geometries = new Set();
+    const materials = new Set();
+
+    group.traverse(object => {
+      if (object.geometry) {
+        geometries.add(object.geometry);
+      }
+
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(m => materials.add(m));
+        } else {
+          materials.add(object.material);
+        }
+      }
+    });
+
+    geometries.forEach(g => g.dispose());
+    materials.forEach(m => m.dispose());
+  }
+
+  function build() {
+    $("error").textContent = "";
+
+    if (!$("form").reportValidity()) return;
+
+    let next = null;
+
+    try {
+      const w = number("width");
+      const h = number("height");
+      const d = number("depth");
+      const t = number("thickness");
+      const n = number("sectionCount");
+      const left = number("leftFiller");
+      const right = number("rightFiller");
+
+      const socle = $("socleEnabled").checked
+        ? number("socleHeight") : 0;
+
+      const attic = $("atticEnabled").checked;
+      const atticH = attic ? number("atticHeight") : 0;
+      const handle = number("handleLength");
+      const offset = number("handleOffset");
+      const gap = number("doorGap");
+
+      const available = w - left - right - (n + 1) * t;
+
+      if (available <= 0) {
+        throw new Error(
+          "Plita va plankalardan keyin ichki joy qolmadi."
+        );
+      }
+
+      const widths = $("sectionWidths").value.trim()
+        ? readList(
+            $("sectionWidths").value,
+            n,
+            "Bo‘lim enlari",
+            false
+          )
+        : Array(n).fill(available / n);
+
+      if (widths.some(value => value < 120)) {
+        throw new Error(
+          "Har bo‘limning sof eni kamida 120 mm bo‘lsin."
+        );
+      }
+      const sum = widths.reduce((a, b) => a + b, 0);
+      const difference = available - sum;
+
+      if (Math.abs(difference) > 0.1) {
+        throw new Error(
+          "Ichki enlar jami: " + sum.toFixed(1) +
+          " mm.\nKerakli jami: " + available.toFixed(1) +
+          " mm.\n" +
+          (difference > 0
+            ? "Bo‘sh joy ortib qoldi: "
+            : "Joy yetishmayapti: ") +
+          Math.abs(difference).toFixed(1) + " mm."
+        );
+      }
+
+      const shelves = readList(
+        $("shelfCounts").value,
+        n,
+        "Tokchalar soni",
+        true
+      );
+
+      if (shelves.some(value => value > 20)) {
+        throw new Error(
+          "Har bo‘limda ko‘pi bilan 20 tokcha kiriting."
+        );
+      }
+
+      const bottom = socle + t;
+      const top = h - t;
+      const separator = attic
+        ? top - atticH - t
+        : top;
+
+      const mainH = separator - bottom;
+
+      if (mainH < 200) {
+        throw new Error(
+          "Asosiy ichki balandlik kamida 200 mm bo‘lsin. " +
+          "Sokol yoki antresol balandligini kamaytiring."
+        );
+      }
+
+      for (let i = 0; i < n; i++) {
+        const clearHeight =
+          (mainH - shelves[i] * t) / (shelves[i] + 1);
+
+        if (clearHeight < 80) {
+          throw new Error(
+            (i + 1) +
+            "-bo‘limda tokchalar oralig‘i 80 mm dan kichik."
+          );
+        }
+      }
+
+      const modes = widths.map((_, i) =>
+        Number($("door-" + i).value)
+      );
+
+      for (let i = 0; i < n; i++) {
+        if (!modes[i]) continue;
+
+        const leafWidth =
+          (widths[i] + t - gap * (modes[i] + 1)) /
+          modes[i];
+
+        if (
+          leafWidth < 100 ||
+          offset >= leafWidth / 2
+        ) {
+          throw new Error(
+            (i + 1) +
+            "-bo‘lim eshigi yoki dasta masofasi mos emas."
+          );
+        }
+
+        if (
+          handle + 40 > mainH ||
+          (attic && handle + 40 > atticH)
+        ) {
+          throw new Error(
+            "Dasta uzunligi eshikka sig‘maydi. " +
+            "Dastani qisqartiring."
+          );
+        }
+      }
+
+      next = new THREE.Group();
+
+      const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: $("bodyColor").value,
+        roughness: 0.75
+      });
+
+      const doorMaterial = new THREE.MeshStandardMaterial({
+        color: $("doorColor").value,
+        roughness: 0.6
+      });
+
+      const metalMaterial = new THREE.MeshStandardMaterial({
+        color: 0x333b44,
+        metalness: 0.75,
+        roughness: 0.3
+      });
+
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x475569,
+        transparent: true,
+        opacity: 0.35
+      });
+
+      function box(sx, sy, sz, x, y, z, material) {
+        const geometry = new THREE.BoxGeometry(sx, sy, sz);
+        const mesh = new THREE.Mesh(geometry, material);
+
+        mesh.position.set(x, y, z);
+
+        const edges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(geometry),
+          edgeMaterial
+        );
+
+        mesh.add(edges);
+        next.add(mesh);
+      }
+
+      const bodyW = w - left - right;
+      const bodyCenter = (left - right) / 2;
+      const innerLeft = -w / 2 + left + t;
+
+      // Korpus yonlari.
+      box(
+        t, h - socle, d,
+        -w / 2 + left + t / 2,
+        (h + socle) / 2,
+        0, bodyMaterial
+      );
+
+      box(
+        t, h - socle, d,
+        w / 2 - right - t / 2,
+        (h + socle) / 2,
+        0, bodyMaterial
+      );// Pastki va yuqori plitalar.
+      box(
+        bodyW - 2 * t, t, d,
+        bodyCenter, socle + t / 2,
+        0, bodyMaterial
+      );
+
+      box(
+        bodyW - 2 * t, t, d,
+        bodyCenter, h - t / 2,
+        0, bodyMaterial
+      );
+
+      // Yon plankalar.
+      if (left > 0) {
+        box(
+          left, h, t,
+          -w / 2 + left / 2,
+          h / 2,
+          d / 2 - t / 2,
+          bodyMaterial
+        );
+      }
+
+      if (right > 0) {
+        box(
+          right, h, t,
+          w / 2 - right / 2,
+          h / 2,
+          d / 2 - t / 2,
+          bodyMaterial
+        );
+      }
+
+      // Sokol old paneli.
+      if (socle > 0) {
+        box(
+          bodyW, socle, t,
+          bodyCenter,
+          socle / 2,
+          d / 2 - 50 - t / 2,
+          bodyMaterial
+        );
+      }
+
+      let x = innerLeft;
+
+      for (let i = 0; i < n; i++) {
+        const cw = widths[i];
+
+        // Tik ajratgichlar yuqorigacha davom etadi.
+        if (i > 0) {
+          box(
+            t, top - bottom, d,
+            x - t / 2,
+            (bottom + top) / 2,
+            0, bodyMaterial
+          );
+        }
+
+        // Har bo‘limda antresol osti plitasi.
+        if (attic) {
+          box(
+            cw, t, d,
+            x + cw / 2,
+            separator + t / 2,
+            0, bodyMaterial
+          );
+        }
+
+        const clear =
+          (mainH - shelves[i] * t) /
+          (shelves[i] + 1);
+
+        for (let k = 1; k <= shelves[i]; k++) {
+          box(
+            cw, t, d - 20,
+            x + cw / 2,
+            bottom + k * clear + (k - 0.5) * t,
+            -10, bodyMaterial
+          );
+        }
+
+        function addDoors(low, high, isAttic) {
+          const count = modes[i];
+          const start = x - t / 2;
+          const end = x + cw + t / 2;
+          const total = end - start;
+
+          const leaf =
+            (total - gap * (count + 1)) / count;
+
+          const doorH = high - low - 2 * gap;
+
+          for (let j = 0; j < count; j++) {
+            const dx = start + gap + j * (leaf + gap);
+
+            box(
+              leaf, doorH, t,
+              dx + leaf / 2,
+              (low + high) / 2,
+              d / 2 + t / 2 + 2,
+              doorMaterial
+            );
+
+            const hx = count === 2
+              ? (j === 0
+                ? dx + leaf - offset
+                : dx + offset)
+              : dx + leaf - offset;
+
+            const hy = isAttic
+              ? low + gap + 20 + handle / 2
+              : (low + high) / 2;
+
+            box(
+              10, handle, 12,
+              hx, hy,
+              d / 2 + t + 26,
+              metalMaterial
+            );
+
+            box(
+              10, 10, 20,
+              hx, hy - handle / 2 + 5,
+              d / 2 + t + 12,
+              metalMaterial
+            );
+
+            box(
+              10, 10, 20,
+              hx, hy + handle / 2 - 5,
+              d / 2 + t + 12,
+              metalMaterial
+            );
+          }
+        }
+
+        if ($("showDoors").checked && modes[i] > 0) {
+          const split = separator + t / 2;
+
+          addDoors(
+            socle,
+            attic ? split : h,
+            false
+          );
+
+          if (attic) {
+            addDoors(split, h, true);
+          }
+        }
+
+        x += cw + t;
+      }
+
+      if (model) {
+        scene.remove(model);
+        disposeModel(model);
+      }
+
+      model = next;
+      scene.add(model);
+      dimensions = { w, h, d };
+      setView("iso");
+
+      $("status").textContent =
+        "Model: " + w + " × " + h + " × " + d + " mm." +
+        "\nSof ichki enlar: " +
+        widths.map(v => v.toFixed(1)).join(", ") + " mm." +
+        "\nAsosiy ichki balandlik: " +
+        mainH.toFixed(1) + " mm." +
+        "\nTokchalar: " + shelves.join(", ") + "." +
+        (attic
+          ? "\nAntresol: " + atticH +
+            " mm, pastdagi kabi " + n + " bo‘lim."
+          : "\nAntresol o‘chirilgan.");
+
+    } catch (error) {
+      if (next && next !== model) disposeModel(next);
+
+      $("error").textContent =
+        error.message +(model
+          ? "\nAvvalgi model o‘zgarmadi."
+          : "");
+    }
+  }
+
+  $("form").addEventListener("submit", event => {
+    event.preventDefault();
+    build();
+  });
+
+  $("showDoors").addEventListener("change", build);
+
+  document.querySelectorAll("[data-view]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        setView(button.dataset.view);
+      });
+    });
+
+  renderer.domElement.addEventListener(
+    "webglcontextlost",
+    event => {
+      event.preventDefault();
+      $("status").textContent =
+        "3D grafik aloqa uzildi. Sahifani yangilang.";
+    }
+  );
+
+  $("buildButton").disabled = false;
+  build();
+
+  renderer.setAnimationLoop(() => {
+    controls.update();
+    renderer.render(scene, camera);
+  });
+
+} catch (error) {
+  $("status").textContent =
+    "3D yuklanmadi: " + error.message +
+    "\nInternetni va brauzerning 3D qo‘llovini tekshiring.";
+}
+</script>
+</body>
+</html>
