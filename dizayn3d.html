@@ -51,7 +51,7 @@
 <div class="toolbar"><button type="button" id="openAll">Eshiklarni ochish</button><button type="button" id="closeAll">Eshiklarni yopish</button></div>
 <div id="viewer"></div><p id="status" role="status">3D yuklanmoqda…</p>
 <small>Eshik yoki dastani bosing — ochiladi; yana bosing — yopiladi. Tortma oldini bosib tortmani ham ochishingiz mumkin. Avval uning oldidagi eshikni oching. Oynali eshikni ochish uchun profil yoki dastani bosing: oynaning o‘zi orqali ichkaridagi tortmani tanlash mumkin.</small>
-<small>Bir barmoq bilan aylantiring, ikki barmoq bilan yaqinlashtiring yoki siljiting. Furnituralar soddalashtirilgan ko‘rgazmali modellar. To‘qnashuv va yuk ko‘tarish hisoblanmaydi. Sahifa yangilansa loyiha saqlanmaydi.</small>
+<small>Tokchani surish uchun avval eshikni oching yoki “Eshiklar ko‘rinsin” belgisini olib tashlang. Tokcha ustiga bosib turib yuqoriga-pastga suring. Surish paytida shkaf aylanmaydi. Old yoki Umumiy ko‘rinishdan foydalaning. Tokcha va uning tutqichlari birga siljiydi. Bo‘sh joydan bir barmoq bilan shkafni aylantiring, ikki barmoq bilan yaqinlashtiring yoki siljiting. Furnituralar soddalashtirilgan ko‘rgazmali modellar. To‘qnashuv va yuk ko‘tarish hisoblanmaydi. Sahifa yangilansa loyiha saqlanmaydi.</small>
 </section></main>
 <script type="module">
 const $=id=>document.getElementById(id), num=id=>Number($(id).value);
@@ -84,15 +84,17 @@ try{
  const host=$('viewer'),scene=new THREE.Scene();scene.background=new THREE.Color('#e4edf1');
  const camera=new THREE.PerspectiveCamera(38,1,1,100000),renderer=new THREE.WebGLRenderer({antialias:true});
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;host.append(renderer.domElement);
- const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=200;controls.maxDistance=30000;
+ const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=0.12;controls.rotateSpeed=0.3;controls.zoomSpeed=0.45;controls.panSpeed=0.35;controls.minDistance=200;controls.maxDistance=30000;
  scene.add(new THREE.HemisphereLight(0xffffff,0x667788,2.5));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(3000,5000,4000);scene.add(light);scene.add(new THREE.GridHelper(12000,24,0xa4b3bd,0xd0dbe1));
+ const shelfPositions=new Map();
+ let cancelShelfDrag=()=>{};
  let model=null,animated=[],dimensions={w:1800,h:2400,d:600};
  function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
  new ResizeObserver(resize).observe(host);resize();
  function setView(view){const {w,h,d}=dimensions,target=new THREE.Vector3(0,h/2,0);const span=Math.max(h,w/Math.max(camera.aspect,.2),d),distance=span/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))*1.5;controls.target.copy(target);camera.up.set(0,1,0);if(view==='front')camera.position.set(0,h/2,distance);else if(view==='back')camera.position.set(0,h/2,-distance);else if(view==='side')camera.position.set(distance,h/2,0);else if(view==='top'){camera.up.set(0,0,-1);camera.position.set(0,h/2+distance,.01)}else camera.position.set(distance*.7,h/2+distance*.42,distance*.85);camera.lookAt(target);controls.update()}
  function dispose(g){const gs=new Set(),ms=new Set();g.traverse(o=>{if(o.geometry)gs.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>ms.add(m))});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose())}
  function build(){
- $('error').textContent='';if(!$('form').reportValidity())return;let next=null;
+ cancelShelfDrag();$('error').textContent='';if(!$('form').reportValidity())return;let next=null;
  try{
  const w=num('width'),h=num('height'),d=num('depth'),t=num('thickness'),n=num('sectionCount'),left=num('leftFiller'),right=num('rightFiller');
  if(!Number.isInteger(n)||n<1||n>8)throw Error('Bo‘limlar soni 1–8 orasida bo‘lsin.');
@@ -138,9 +140,16 @@ try{
  for(let i=0;i<n;i++){
  const cw=widths[i],c=configs[i];if(i)box(t,top-bottom,d,x-t/2,(bottom+top)/2,0,body);
  if(attic)box(cw,t,d,x+cw/2,sep+t/2,0,body);
+ const shelfSet=[];
+ const shelfKey=JSON.stringify([w,h,d,t,left,right,base,cap,ah,widths,i,c.shelves,c.drawers,c.dh,c.rod,c.ry]);
  for(let k=1;k<=c.shelves;k++){
- const y=bottom+c.stack+k*c.clear+(k-.5)*t;box(cw,t,d-24,x+cw/2,y,-8,body);
- if(hw)for(const xx of [x+5,x+cw-5])for(const zz of [-d/2+60,d/2-65])cylinder(3,10,xx,y-t/2-3,zz,metal);
+ const initialY=bottom+c.stack+k*c.clear+(k-.5)*t;
+ const key=shelfKey+':'+k;
+ const y=shelfPositions.has(key)?shelfPositions.get(key):initialY;
+ const sg=new THREE.Group();sg.position.y=y;next.add(sg);shelfSet.push(sg);
+ sg.userData.shelf={key,index:k-1,section:i+1,siblings:shelfSet,min:bottom+c.stack+t/2+20,max:sep-t/2-20,t,rodY:c.rod?bottom+c.ry:null,initialY};
+ box(cw,t,d-24,x+cw/2,0,-8,body,sg);
+ if(hw)for(const xx of [x+5,x+cw-5])for(const zz of [-d/2+60,d/2-65])cylinder(3,10,xx,-t/2-3,zz,metal,sg);
  }
  if(c.rod){const y=bottom+c.ry;cylinder(12.5,cw-16,x+cw/2,y,0,metal);if(hw)for(const xx of [x+4,x+cw-4]){box(8,44,44,xx,y,0,metal);cylinder(18,16,xx+(xx<x+cw/2?8:-8),y,0,metal)}}
  for(let j=0;j<c.drawers;j++){
@@ -159,7 +168,7 @@ try{
  for(let j=0;j<count;j++){
  const dx=x-t/2+gap+j*(leaf+gap),rightHinge=count===2&&j===1,sign=rightHinge?-1:1;
  const pivot=new THREE.Group();pivot.position.set(rightHinge?dx+leaf:dx,(low+high)/2,d/2+t/2+2);pivot.visible=$('showDoors').checked;next.add(pivot);
- pivot.userData.motion={kind:'door',open:false,value:0,extent:sign*Math.PI*100/180};motions.push(pivot);
+ pivot.userData.motion={kind:'door',open:false,value:0,extent:-sign*Math.PI*100/180};motions.push(pivot);
  const cx=sign*leaf/2;
  if(c.glass){for(const xx of [sign*pw/2,sign*(leaf-pw/2)])box(pw,dh,t,xx,0,0,profile,pivot);for(const yy of [-dh/2+pw/2,dh/2-pw/2])box(leaf-2*pw,pw,t,cx,yy,0,profile,pivot);const pane=box(leaf-2*pw,dh-2*pw,4,cx,0,0,glassMat,pivot,false);pane.userData.ignorePick=true}
  else box(leaf,dh,t,cx,0,0,door,pivot);
@@ -178,14 +187,53 @@ try{
  $('status').textContent=`Model: ${w} × ${h} × ${d} mm\nSof ichki enlar: ${widths.map(v=>v.toFixed(1)).join(', ')} mm\nAsosiy ichki balandlik: ${mh.toFixed(1)} mm\nPastki / yuqori dasta: ${lh} / ${uh} mm\nPastki / yuqori sokol: ${base} / ${cap} mm\nTortmalar: ${configs.reduce((s,c)=>s+c.drawers,0)} ta. Turbalar: ${configs.filter(c=>c.rod).length} ta.\nHDF: ${$('hdfEnabled').checked?num('hdfThickness')+' mm':'yo‘q'}.`;
  }catch(e){if(next&&next!==model)dispose(next);$('error').textContent=e.message+(model?'\nAvvalgi model o‘zgarmadi.':'')}
  }
- const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null;
- renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,id:e.pointerId,multi:!e.isPrimary}});
- renderer.domElement.addEventListener('pointercancel',()=>down=null);
- renderer.domElement.addEventListener('pointerup',e=>{
- if(!down||down.multi||down.id!==e.pointerId||Math.hypot(e.clientX-down.x,e.clientY-down.y)>6){down=null;return}down=null;if(!model)return;
- const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);
- const hits=ray.intersectObject(model,true);for(const hit of hits){if(!hit.object.isMesh||hit.object.userData.ignorePick)continue;let o=hit.object,visible=true,motion=null;while(o){if(!o.visible)visible=false;if(o.userData.motion)motion=o;o=o.parent}if(!visible)continue;if(motion)motion.userData.motion.open=!motion.userData.motion.open;break}
- });
+ const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null,drag=null;
+ const canvas=renderer.domElement,activePointers=new Set();
+ function pointRay(e){const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera)}
+ function pick(e){if(!model)return null;pointRay(e);for(const hit of ray.intersectObject(model,true)){
+ if(!hit.object.isMesh||hit.object.userData.ignorePick)continue;
+ let o=hit.object,visible=true,shelf=null,motion=null;
+ while(o){if(!o.visible)visible=false;if(o.userData.shelf)shelf=o;if(o.userData.motion)motion=o;o=o.parent}
+ if(visible)return {hit,shelf,motion};
+ }return null}
+ function endDrag(){if(!drag)return;const id=drag.id;drag=null;controls.enabled=true;canvas.style.cursor='';if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id)}
+ cancelShelfDrag=()=>{endDrag();down=null;activePointers.clear()};
+ canvas.addEventListener('pointerdown',e=>{
+ activePointers.add(e.pointerId);
+ if(activePointers.size>1){endDrag();down=null;return}
+ down={x:e.clientX,y:e.clientY,id:e.pointerId,multi:!e.isPrimary};
+ if(e.button!==0||!e.isPrimary)return;
+ const p=pick(e);if(!p||!p.shelf)return;
+ const normal=camera.getWorldDirection(new THREE.Vector3());normal.y=0;
+ if(normal.lengthSq()<0.01){$('status').textContent='Tokchani surish uchun Old yoki Umumiy ko‘rinishga o‘ting.';return}
+ normal.normalize();const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(normal,p.hit.point);
+ const anchor=new THREE.Vector3();if(!ray.ray.intersectPlane(plane,anchor))return;
+ controls.update();controls.enabled=false;
+ drag={id:e.pointerId,group:p.shelf,plane,startY:p.shelf.position.y,anchorY:anchor.y};
+ canvas.setPointerCapture(e.pointerId);canvas.style.cursor='ns-resize';e.preventDefault();e.stopImmediatePropagation();
+ },{capture:true});
+ canvas.addEventListener('pointermove',e=>{
+ if(!drag||e.pointerId!==drag.id)return;e.preventDefault();e.stopImmediatePropagation();pointRay(e);
+ const p=new THREE.Vector3();if(!ray.ray.intersectPlane(drag.plane,p))return;
+ const g=drag.group,m=g.userData.shelf;
+ let low=m.min,high=m.max;
+ if(m.index>0)low=Math.max(low,m.siblings[m.index-1].position.y+m.t+20);
+ if(m.index<m.siblings.length-1)high=Math.min(high,m.siblings[m.index+1].position.y-m.t-20);
+ if(m.rodY!==null){const margin=m.t/2+20;if(drag.startY<m.rodY)high=Math.min(high,m.rodY-margin);else low=Math.max(low,m.rodY+margin)}
+ if(low>high)return;
+ const y=THREE.MathUtils.clamp(Math.round(drag.startY+p.y-drag.anchorY),low,high);
+ g.position.y=y;shelfPositions.set(m.key,y);
+ $('status').textContent=m.section+'-bo‘lim, '+(m.index+1)+'-tokcha: pastki ichki yuzadan '+Math.round(y-(m.min-m.t/2-20))+' mm (tortmalar ustidan).\nTokcha joyi shu sahifa ochiq turguncha saqlanadi.';
+ },{capture:true});
+ canvas.addEventListener('pointerup',e=>{
+ activePointers.delete(e.pointerId);
+ if(drag&&drag.id===e.pointerId){endDrag();down=null;e.preventDefault();e.stopImmediatePropagation();return}
+ if(!down||down.multi||down.id!==e.pointerId||Math.hypot(e.clientX-down.x,e.clientY-down.y)>6){down=null;return}down=null;
+ const p=pick(e);if(p&&p.motion)p.motion.userData.motion.open=!p.motion.userData.motion.open;
+ },{capture:true});
+ canvas.addEventListener('pointercancel',e=>{activePointers.delete(e.pointerId);endDrag();down=null},{capture:true});
+ canvas.addEventListener('lostpointercapture',()=>{if(drag){drag=null;controls.enabled=true;canvas.style.cursor=''}down=null});
+ window.addEventListener('blur',cancelShelfDrag);
  $('form').addEventListener('submit',e=>{e.preventDefault();build()});
  $('showDoors').addEventListener('change',()=>animated.forEach(g=>{if(g.userData.motion.kind==='door')g.visible=$('showDoors').checked}));
  $('openAll').onclick=()=>animated.forEach(g=>{if(g.userData.motion.kind==='door')g.userData.motion.open=true});$('closeAll').onclick=()=>animated.forEach(g=>g.userData.motion.open=false);
