@@ -2403,6 +2403,7 @@ if (auth.currentUser?.uid !== user.uid) {
 
   function ecoDetailDraw(id, z, token) {
     ecoDetail.replaceChildren();
+  ecoDetail.dataset.modelOrderId = id;  
 
     const title = ecoD(
       "h2",
@@ -2882,7 +2883,7 @@ close.focus();
     successMessage = ""
   ) {
     if (ecoDetailSaving) return;
-
+delete ecoDetail.dataset.modelOrderId;
     const token = ++ecoDetailToken;
 
     ecoDetailOrigin = origin;
@@ -17663,6 +17664,347 @@ holat.textContent =
 
     if (admin && panel.open) yuklash();
   });
+}
+</script>
+<!-- Zakaz ichidagi saqlangan 3D modellar -->
+<script type="module">
+import {
+  getApp
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  getDocFromServer,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+if (!window.ecoOrderModelsInstalledV1) {
+  window.ecoOrderModelsInstalledV1 = true;
+
+  const app = getApp();
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const ADMIN = "xtD3NXgcHcbKRWx9WTclzNXMn4S2";
+
+  function admin() {
+    if (auth.currentUser?.uid !== ADMIN) {
+      throw new Error("Admin hisobiga kiring.");
+    }
+  }
+
+  function modelsOf(order) {
+    const models = order.ecoModels3d;
+
+    if (models === undefined) return {};
+
+    if (
+      !models ||
+      typeof models !== "object" ||
+      Array.isArray(models)
+    ) {
+      throw new Error("3D model ma’lumotlari noto‘g‘ri.");
+    }
+
+    return { ...models };
+  }
+
+  function element(tag, text, parent) {
+    const el = document.createElement(tag);
+
+    if (text !== null) el.textContent = text;
+    if (parent) parent.append(el);
+
+    return el;
+  }
+
+  function installModels() {
+    const dialog = document.getElementById("ecoOrderDetail");
+    const orderId = dialog?.dataset.modelOrderId;
+
+    if (
+      !dialog?.open ||
+      !orderId ||
+      auth.currentUser?.uid !== ADMIN ||
+      dialog.querySelector(".eco-3d-models-panel")
+    ) {
+      return;
+    }
+
+    const panel = element("section", null, dialog);
+    panel.className = "eco-3d-models-panel";
+    panel.style.cssText =
+      "margin-top:22px;padding-top:16px;" +
+      "border-top:2px solid #cbd5e1";
+
+    element("h3", "3D modellar", panel);
+
+    const refresh = element(
+      "button",
+      "Modellarni yangilash",
+      panel
+    );
+    refresh.type = "button";
+
+    const status = element("p", "", panel);
+    status.setAttribute("role", "status");
+
+    const list = element("div", null, panel);
+
+    let busy = false;
+    let revision = 0;
+
+    function alive() {
+      return (
+        panel.isConnected &&
+        dialog.open &&
+        dialog.dataset.modelOrderId === orderId &&
+        auth.currentUser?.uid === ADMIN
+      );
+    }
+
+    function say(text, error = false) {
+      if (!alive()) return;
+
+      status.textContent = text;
+      status.style.color = error ? "#b42318" : "#087d85";
+    }
+
+    async function loadModels() {
+      const token = ++revision;
+
+      say("Modellar olinmoqda...");
+
+      const snapshot = await getDocFromServer(
+        doc(db, "zakazlar", orderId)
+      );
+
+      admin();
+
+      if (!alive() || token !== revision) return;
+
+      if (!snapshot.exists()) {
+        throw new Error("Zakaz topilmadi.");
+      }
+
+      const models = modelsOf(snapshot.data());
+
+      const entries = Object.entries(models).sort(
+        (a, b) =>
+          String(b[1]?.createdAt || "").localeCompare(
+            String(a[1]?.createdAt || "")
+          )
+      );
+
+      list.replaceChildren();
+
+      for (const [modelId, item] of entries) {
+        const project = item?.project || {};
+        const dimensions = project.dimensions || {};
+
+        const card = element("div", null, list);
+        card.style.cssText =
+          "padding:12px;margin:12px 0;" +
+          "border:1px solid #ccd8de;border-radius:10px";
+
+        const size = [
+          dimensions.w,
+          dimensions.h,
+          dimensions.d
+        ].map(value => Number.isFinite(value) ? value : "?");
+
+        element(
+          "h4",
+          "3D shkaf — " + size.join(" × ") + " mm",
+          card
+        );
+
+        const preview = project.preview;
+
+        if (
+          typeof preview === "string" &&
+          preview.length <= 150000 &&
+          /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(preview)
+        ) {
+          const image = element("img", null, card);
+
+          image.src = preview;
+          image.alt = "Saqlangan shkaf modeli";
+          image.style.cssText ="display:block;max-width:100%;" +
+            "max-height:340px;border-radius:8px";
+        }
+
+        const date = new Date(item?.createdAt);
+
+        if (Number.isFinite(date.getTime())) {
+          element(
+            "p",
+            "Saqlangan: " + date.toLocaleString("uz-UZ"),
+            card
+          );
+        }
+
+        const link = element(
+          "a",
+          "3D modelni ochish",
+          card
+        );
+
+        const url = new URL(
+          "./dizayn3d.html",
+          location.href
+        );
+
+        url.searchParams.set("ecoOrder", orderId);
+        url.searchParams.set("ecoModel", modelId);
+
+        link.href = url.href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.cssText =
+          "display:inline-block;padding:10px 14px;" +
+          "margin:5px;border-radius:7px;" +
+          "background:#087d85;color:white;" +
+          "text-decoration:none";
+
+        const remove = element(
+          "button",
+          "Modelni olib tashlash",
+          card
+        );
+
+        remove.type = "button";
+        remove.style.background = "#b42318";
+
+        remove.onclick = async () => {
+          if (busy || !alive()) return;
+
+          const approved = confirm(
+            "Shu 3D modelni zakazdan olib tashlaysizmi?\n" +
+            "Saqlangan model nusxasi o‘chadi.\n" +
+            "Zakaz va boshqa biriktirmalar saqlanadi."
+          );
+
+          if (!approved) return;
+
+          busy = true;
+          remove.disabled = true;
+          refresh.disabled = true;
+
+          try {
+            admin();
+            say("Model olib tashlanmoqda...");
+
+            await runTransaction(db, async transaction => {
+              const ref = doc(db, "zakazlar", orderId);
+              const snapshot = await transaction.get(ref);
+
+              admin();
+
+              if (!snapshot.exists()) {
+                throw new Error("Zakaz topilmadi.");
+              }
+
+              const models = modelsOf(snapshot.data());
+
+              if (
+                !Object.prototype.hasOwnProperty.call(
+                  models,
+                  modelId
+                )
+              ) {
+                return;
+              }
+
+              delete models[modelId];
+
+              transaction.update(ref, {
+                ecoModels3d: models
+              });
+            });
+
+            if (alive()) {
+              await loadModels();
+              say("Model olib tashlandi. Zakaz saqlandi.");
+            }
+          } catch (error) {
+            say(
+              "Amal to‘liq tasdiqlanmadi: " +
+              (error.message || error.code) +
+              ". Modellarni yangilab tekshiring.",
+              true
+            );
+          } finally {
+            busy = false;
+
+            if (alive()) {
+              refresh.disabled = false;
+              remove.disabled = false;
+            }
+          }
+        };
+      }
+
+      say(
+        entries.length
+          ? "Modellar: " + entries.length
+          : "Bu zakazga hali 3D model qo‘shilmagan."
+      );
+    }
+
+    async function refreshModels() {
+      if (busy || !alive()) return;
+
+      busy = true;
+      refresh.disabled = true;
+
+      try {
+        admin();
+        await loadModels();
+      } catch (error) {
+        say(
+          "Modellar olinmadi: " +
+          (error.message || error.code),
+          true
+        );
+      } finally {
+        busy = false;
+
+        if (alive()) refresh.disabled = false;
+      }
+    }
+
+    refresh.onclick = refreshModels;
+    refreshModels();
+  }
+
+  const observer = new MutationObserver(installModels);
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: [
+      "open",
+      "data-model-order-id"
+    ]
+  });
+
+  onAuthStateChanged(auth, () => {
+    document.querySelectorAll(
+      ".eco-3d-models-panel"
+    ).forEach(panel => panel.remove());
+
+    installModels();
+  });
+
+  installModels();
 }
 </script>
 </body>
