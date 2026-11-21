@@ -52,7 +52,15 @@
 <div id="viewer"></div><p id="status" role="status">3D yuklanmoqda…</p>
 <small>Eshik yoki dastani bosing — ochiladi; yana bosing — yopiladi. Tortma oldini bosib tortmani ham ochishingiz mumkin. Avval uning oldidagi eshikni oching. Oynali eshikning oynasi, profili yoki dastasini bosing — eshik ochiladi. Ichki tortmani tanlash uchun avval eshikni oching.</small>
 <small>Tokchani surish uchun eshikni oching yoki “Eshiklar ko‘rinsin” belgisini olib tashlang. Old yoki Umumiy ko‘rinishda tokcha ustiga bosib turib yuqoriga-pastga suring. Tokcha joyi sahifa ochiq turguncha saqlanadi. Bo‘sh joydan bir barmoq bilan aylantiring, ikki barmoq bilan yaqinlashtiring yoki siljiting. Furnituralar soddalashtirilgan ko‘rgazmali modellar. To‘qnashuv va yuk ko‘tarish hisoblanmaydi. Sahifa yangilansa loyiha saqlanmaydi.</small>
-</section></main>
+<div id="ecoModelOrders" style="margin-top:22px;border-top:1px solid #ccd8de;padding-top:18px">
+ <button type="button" class="wide" id="ecoAddModel">Zakazga qo‘shish</button>
+ <small>Model rasmi, o‘lchamlari, sozlamalari va tokchalar joylari tanlangan zakazga saqlanadi.</small>
+ <p id="ecoModelMessage" role="status"></p></div>
+ </section></main>
+ <dialog id="ecoModelPicker" style="width:min(550px,94vw);border:1px solid #ccd8de;border-radius:12px"><h2>Modelni zakazga qo‘shish</h2>
+ <label>Zakazni tanlang<select id="ecoModelOrderSelect"></select></label>
+ <button type="button" id="ecoModelSave">Tanlangan zakazga saqlash</button>
+ <button type="button" id="ecoModelCancel">Yopish</button><p id="ecoPickerMessage" role="status"></p></dialog>
 <script type="module">
 const $=id=>document.getElementById(id), num=id=>Number($(id).value);
 const field=(id,label,value,min,max)=>`<label>${label}<input id="${id}" type="number" value="${value}" min="${min}" max="${max}" required></label>`;
@@ -93,10 +101,15 @@ try{
  const THREE=await import('three');const {OrbitControls}=await import('three/addons/controls/OrbitControls.js');
  const host=$('viewer'),scene=new THREE.Scene();scene.background=new THREE.Color('#e4edf1');
  const camera=new THREE.PerspectiveCamera(38,1,1,100000),renderer=new THREE.WebGLRenderer({antialias:true});
- renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;host.append(renderer.domElement);
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;host.append(renderer.domElement);
  const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.12;controls.rotateSpeed=.3;controls.zoomSpeed=.45;controls.panSpeed=.35;controls.minDistance=200;controls.maxDistance=30000;
- scene.add(new THREE.HemisphereLight(0xffffff,0x667788,2.5));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(3000,5000,4000);scene.add(light);scene.add(new THREE.GridHelper(12000,24,0xa4b3bd,0xd0dbe1));
+ scene.add(new THREE.HemisphereLight(0xffffff,0x8494a1,1.8));const light=new THREE.DirectionalLight(0xfff5e8,3);light.position.set(3000,5000,4000);light.castShadow=true;light.shadow.mapSize.set(1024,1024);light.shadow.bias=-.00015;light.shadow.normalBias=3;scene.add(light);scene.add(light.target);
+ const fill=new THREE.DirectionalLight(0xdcecff,1.2);fill.position.set(-3000,2000,1500);scene.add(fill);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.ShadowMaterial({opacity:.16}));floor.rotation.x=-Math.PI/2;floor.position.y=-2;floor.receiveShadow=true;scene.add(floor);
+ try{const {RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js');const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();const env=pmrem.fromScene(room,.04);scene.environment=env.texture;room.dispose();pmrem.dispose()}catch(e){console.warn('Environment fallback',e)}
+ scene.add(new THREE.GridHelper(12000,24,0xa4b3bd,0xd0dbe1));
  const shelfPositions=new Map();let cancelShelfDrag=()=>{};
+ let builtFields=null;
  let model=null,animated=[],dimensions={w:1800,h:2400,d:600};
  function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
  new ResizeObserver(resize).observe(host);resize();
@@ -141,10 +154,10 @@ try{
  next=new THREE.Group();const motions=[];
  const mat=(color,metalness=0,roughness=.65)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
  const body=mat($('bodyColor').value),door=mat($('doorColor').value),metal=mat('#aab2ba',.8,.25),dark=mat('#333b44',.65,.3),profile=mat($('profileColor').value,.7,.3),back=mat($('backColor').value);
- const glassMat=new THREE.MeshPhysicalMaterial({color:'#b8dce5',transparent:true,opacity:num('glassOpacity'),roughness:.12,metalness:0,side:THREE.DoubleSide,depthWrite:false});
- const edge=new THREE.LineBasicMaterial({color:0x475569,transparent:true,opacity:.25});
- function box(sx,sy,sz,x,y,z,m,parent=next,edges=true){const geo=new THREE.BoxGeometry(sx,sy,sz),o=new THREE.Mesh(geo,m);o.position.set(x,y,z);if(edges)o.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),edge));parent.add(o);return o}
- function cylinder(r,len,x,y,z,m,parent=next,axis='x'){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,16),m);if(axis==='x')o.rotation.z=Math.PI/2;if(axis==='z')o.rotation.x=Math.PI/2;o.position.set(x,y,z);parent.add(o);return o}
+ const glassMat=new THREE.MeshPhysicalMaterial({color:'#b8dce5',transparent:true,opacity:num('glassOpacity'),roughness:.12,metalness:0,envMapIntensity:1.5,clearcoat:1,side:THREE.DoubleSide,depthWrite:false});
+ const edge=new THREE.LineBasicMaterial({color:0x475569,transparent:true,opacity:.12});
+ function box(sx,sy,sz,x,y,z,m,parent=next,edges=true){const geo=new THREE.BoxGeometry(sx,sy,sz),o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;if(edges)o.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),edge));parent.add(o);return o}
+ function cylinder(r,len,x,y,z,m,parent=next,axis='x'){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,16),m);if(axis==='x')o.rotation.z=Math.PI/2;if(axis==='z')o.rotation.x=Math.PI/2;o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
  function handle(x,y,len,parent){box(10,len,12,x,y,t/2+24,dark,parent);for(const yy of [-len/2+5,len/2-5])box(10,10,20,x,y+yy,t/2+12,dark,parent)}
  const bw=w-left-right,bc=(left-right)/2,il=-w/2+left+t;
  box(t,roof-base,d,-w/2+left+t/2,(roof+base)/2,0,body);box(t,roof-base,d,w/2-right-t/2,(roof+base)/2,0,body);
@@ -209,7 +222,9 @@ try{
  if(c.bottomCount)doors(base,c.mainLow,false,c.bottomCount,c.bottomGlass);
  x+=cw+t;
  }
- if(model){scene.remove(model);dispose(model)}model=next;animated=motions;scene.add(model);dimensions={w,h,d};setView('iso');
+ if(model){scene.remove(model);dispose(model)}model=next;animated=motions;scene.add(model);dimensions={w,h,d};
+ const shadowSpan=Math.max(w,h,d)*1.15;Object.assign(light.shadow.camera,{left:-shadowSpan,right:shadowSpan,top:shadowSpan,bottom:-shadowSpan,near:100,far:30000});light.shadow.camera.updateProjectionMatrix();light.target.position.set(0,h/2,0);light.position.set(w*.7+2000,h+3000,d+3000);
+ builtFields=readFields();setView('iso');
  $('status').textContent=`Model: ${w} × ${h} × ${d} mm\nSof ichki enlar: ${widths.map(v=>v.toFixed(1)).join(', ')} mm\nBo‘limlarning asosiy ichki balandligi: ${configs.map(c=>c.mh.toFixed(1)).join(", ")} mm\nPastki / yuqori dasta: ${lh} / ${uh} mm\nPastki / yuqori sokol: ${base} / ${cap} mm\nTortmalar: ${configs.reduce((s,c)=>s+c.drawers+c.extCount,0)} ta. Turbalar: ${configs.filter(c=>c.rod).length} ta.\nHDF: ${$('hdfEnabled').checked?num('hdfThickness')+' mm':'yo‘q'}.`;
  }catch(e){if(next&&next!==model)dispose(next);$('error').textContent=e.message+(model?'\nAvvalgi model o‘zgarmadi.':'')}
  }
@@ -241,8 +256,11 @@ try{
  const g=drag.group,m=g.userData.shelf;let low=m.min,high=m.max;
  if(m.index>0)low=Math.max(low,m.siblings[m.index-1].position.y+m.t+20);
  if(m.index<m.siblings.length-1)high=Math.min(high,m.siblings[m.index+1].position.y-m.t-20);
- if(m.rodY!==null){const margin=m.t/2+20;if(drag.startY<m.rodY)high=Math.min(high,m.rodY-margin);else low=Math.max(low,m.rodY+margin)}
- if(low>high)return;const y=THREE.MathUtils.clamp(Math.round(drag.startY+p.y-drag.anchorY),low,high);
+ if(low>high)return;
+ const requestedY=Math.round(drag.startY+p.y-drag.anchorY);
+ let y=THREE.MathUtils.clamp(requestedY,low,high);
+ if(m.rodY!==null){const margin=m.t/2+22,below=m.rodY-margin,above=m.rodY+margin;
+ if(y>below&&y<above){const allowed=[below,above].filter(v=>v>=low&&v<=high);if(!allowed.length)return;y=allowed.reduce((best,v)=>Math.abs(v-requestedY)<Math.abs(best-requestedY)?v:best)}}
  g.position.y=y;shelfPositions.set(m.key,y);
  $('status').textContent=m.section+'-bo‘lim, '+(m.index+1)+'-tokcha: asosiy qism tubidan '+Math.round(y-m.floor)+' mm.\nJoylashuv sahifa ochiq turguncha saqlanadi.';
  },{capture:true});
@@ -260,7 +278,105 @@ try{
  $('openAll').onclick=()=>animated.forEach(g=>{if(g.userData.motion.kind==='door')g.userData.motion.open=true});$('closeAll').onclick=()=>animated.forEach(g=>g.userData.motion.open=false);
  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('status').textContent='3D grafik aloqa uzildi. Sahifani yangilang.'});
+ 
+ function readFields(){return Object.fromEntries([...$('form').querySelectorAll('input,select')].map(e=>[e.id,e.type==='checkbox'?e.checked:e.value]))}
+ function captureProject(){
+ cancelShelfDrag();
+ if(!model||!builtFields||$('error').textContent)throw Error('Avval xatosiz 3D modelni yangilang.');
+ const current=readFields(),built={...builtFields};delete current.showDoors;delete built.showDoors;
+ if(JSON.stringify(current)!==JSON.stringify(built))throw Error('Sozlamalar o‘zgargan. Avval “3D modelni yangilash”ni bosing.');
+ const shelves=[];model.traverse(o=>{if(o.userData.shelf)shelves.push({key:o.userData.shelf.key,y:o.position.y})});
+ renderer.render(scene,camera);
+ const image=document.createElement('canvas'),scale=Math.min(1,640/Math.max(renderer.domElement.width,renderer.domElement.height));image.width=Math.max(1,Math.round(renderer.domElement.width*scale));image.height=Math.max(1,Math.round(renderer.domElement.height*scale));image.getContext('2d').drawImage(renderer.domElement,0,0,image.width,image.height);
+ const preview=image.toDataURL('image/jpeg',.65);
+ if(preview.length>150000)throw Error('Model rasmi hajmi katta. Ko‘rinishni o‘zgartirib qayta urining.');
+ return {version:1,fields:readFields(),shelves,preview,dimensions:{...dimensions}};
+ }
+ function restoreProject(project){
+ if(!project||project.version!==1||!project.fields||typeof project.fields!=='object'||!Array.isArray(project.shelves)||project.shelves.length>160)throw Error('Model ma’lumotlari formati noto‘g‘ri.');
+ const count=Number(project.fields.sectionCount);if(!Number.isInteger(count)||count<1||count>8)throw Error('Saqlangan model bo‘limlari noto‘g‘ri.');
+ const before=readFields();$('sectionCount').value=count;sectionFields();
+ for(const e of $('form').querySelectorAll('input,select')){
+ const v=project.fields[e.id];if(v===undefined)continue;
+ if(e.type==='checkbox')e.checked=v===true;else if(typeof v==='string'&&v.length<2000)e.value=v;
+ }
+ if(!$('form').reportValidity())throw Error('Saqlangan model maydonlari noto‘g‘ri.');
+ shelfPositions.clear();build();if(!model)throw Error('Modelni yaratib bo‘lmadi.');if($('error').textContent)throw Error($('error').textContent);
+ const saved=new Map(project.shelves.filter(r=>r&&typeof r.key==='string'&&r.key.length<2000&&Number.isFinite(r.y)).map(r=>[r.key,r.y]));
+ const groups=[];model.traverse(o=>{if(o.userData.shelf)groups.push(o)});
+ const candidate=new Map(groups.map(g=>[g,saved.has(g.userData.shelf.key)?saved.get(g.userData.shelf.key):g.position.y]));
+ for(const g of groups){const m=g.userData.shelf,y=candidate.get(g),prev=m.siblings[m.index-1],next=m.siblings[m.index+1];
+ if(y<m.min-.01||y>m.max+.01||(prev&&y-candidate.get(prev)<m.t+20-.01)||(next&&candidate.get(next)-y<m.t+20-.01)||(m.rodY!==null&&Math.abs(y-m.rodY)<m.t/2+22-.01))throw Error('Model ochildi, lekin saqlangan tokcha joylari mos emas. Tokchalar teng taqsimlandi.');
+ }
+ for(const [g,y]of candidate){g.position.y=y;shelfPositions.set(g.userData.shelf.key,y)}
+ setView('iso');$('status').textContent+='\nZakazdagi model va tokcha joylari ochildi.';
+ }
+ window.ecoDesigner3D={capture:captureProject,restore:restoreProject};
+
  $('buildButton').disabled=false;build();let last=performance.now();
  renderer.setAnimationLoop(now=>{const dt=Math.min((now-last)/1000,.05);last=now;const a=1-Math.exp(-10*dt);animated.forEach(g=>{const m=g.userData.motion;m.value+=((m.open?m.extent:0)-m.value)*a;if(m.kind==='door')g.rotation.y=m.value;else g.position.z=m.value});controls.update();renderer.render(scene,camera)});
 }catch(e){$('status').textContent='3D yuklanmadi: '+e.message+'\nInternet va brauzerning WebGL qo‘llovini tekshiring.'}
+</script><script type="module">
+import {initializeApp,getApp,getApps} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import {getFirestore,collection,doc,getDocsFromServer,getDocFromServer,runTransaction} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+const app=getApps().length?getApp():initializeApp({
+    apiKey: "AIzaSyDRohvTKAXBa1y8IywkUZD00ZmKgw746Ug",
+    authDomain: "eco-mebel.firebaseapp.com",
+    projectId: "eco-mebel",
+    storageBucket: "eco-mebel.firebasestorage.app",
+    messagingSenderId: "55907548196",
+    appId: "1:55907548196:web:318de523be887425feecb1"
+  }),auth=getAuth(app),db=getFirestore(app);
+const ADMIN='xtD3NXgcHcbKRWx9WTclzNXMn4S2';
+function admin(){if(auth.currentUser?.uid!==ADMIN)throw Error('Bosh sahifada admin hisobiga kiring, keyin bu sahifani yangilang.');}
+function modelsOf(d){const m=d.ecoModels3d;if(m===undefined)return {};if(!m||typeof m!=='object'||Array.isArray(m))throw Error('Zakazdagi 3D model ma’lumotlari noto‘g‘ri.');return {...m}}
+function elem(tag,text,parent){const el=document.createElement(tag);if(text!==null)el.textContent=text;if(parent)parent.append(el);return el}
+function imageOk(value){return typeof value==='string'&&value.length<=150000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)}
+
+const el=id=>document.getElementById(id),message=el('ecoModelMessage'),dialog=el('ecoModelPicker'),select=el('ecoModelOrderSelect'),save=el('ecoModelSave'),pickerMsg=el('ecoPickerMessage');
+let busy=false,pending=null,restoreTried=false;
+function say(error,target=message){target.textContent=error?.message||String(error);target.style.color='#b42318'}
+async function api(){for(let i=0;i<150;i++){if(window.ecoDesigner3D)return window.ecoDesigner3D;await new Promise(r=>setTimeout(r,100))}throw Error('3D model hali yuklanmadi. Internetni tekshiring.');}
+el('ecoModelCancel').onclick=()=>{if(!busy)dialog.close()};dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault()});
+el('ecoAddModel').onclick=async()=>{
+ if(busy)return;busy=true;el('ecoAddModel').disabled=true;message.textContent='Zakazlar olinmoqda...';
+ try{
+ admin();if(!pending){const project=(await api()).capture();pending={id:crypto.randomUUID(),project,createdAt:new Date().toISOString()}}
+ const snaps=await getDocsFromServer(collection(db,'zakazlar'));admin();select.replaceChildren();
+ const rows=snaps.docs.map(s=>({...s.data(),id:s.id})).filter(z=>z.arxivlangan!==true&&z.arxiv!==true&&!['topshirildi','topshirilgan','bekor','bekor_qilindi'].includes(z.holat)).sort((a,b)=>(b.zakazRaqami||0)-(a.zakazRaqami||0));
+ if(!rows.length)throw Error('Biriktirish uchun faol zakaz topilmadi.');
+ for(const z of rows){const o=elem('option','№'+(z.zakazRaqami||'—')+' — '+(z.ism||'Mijoz'),select);o.value=z.id}
+ pickerMsg.textContent='Zakazni tanlang. Rasm va sozlamalar birga saqlanadi.';dialog.showModal();message.textContent='';
+ }catch(e){say(e)}finally{busy=false;el('ecoAddModel').disabled=false}
+};
+save.onclick=async()=>{
+ if(busy||!pending)return;const target=select.value;if(!target)return;
+ if(!confirm(select.selectedOptions[0].textContent+' zakaziga 3D modelni qo‘shasizmi?'))return;
+ busy=true;save.disabled=true;select.disabled=true;const record=pending;pickerMsg.textContent='Saqlanmoqda...';
+ try{
+ admin();const ref=doc(db,'zakazlar',target);
+ await runTransaction(db,async tx=>{
+ const snap=await tx.get(ref);admin();if(!snap.exists())throw Error('Zakaz topilmadi.');const d=snap.data();
+ if(d.arxivlangan===true||d.arxiv===true||['topshirildi','topshirilgan','bekor','bekor_qilindi'].includes(d.holat))throw Error('Zakaz yopilgan yoki arxivlangan.');
+ const models=modelsOf(d);if(models[record.id])return;
+ if(Object.keys(models).length>=5)throw Error('Bir zakazga ko‘pi bilan 5 ta model. Avval keraksiz modelni olib tashlang.');
+ models[record.id]={...record,createdBy:ADMIN};
+ if(new TextEncoder().encode(JSON.stringify(models)).length>600000||new TextEncoder().encode(JSON.stringify({...d,ecoModels3d:models})).length>800000)throw Error('Modellar hajmi katta. Avval keraksiz modelni olib tashlang.');
+ tx.update(ref,{ecoModels3d:models});
+ });
+ admin();pending=null;dialog.close();message.style.color='#087d85';message.textContent='Model zakazga saqlandi. Bosh sahifada shu zakazni ochib, “3D modellar” bo‘limidan ko‘ring.';
+ }catch(e){say(new Error((e.message||e.code)+' Saqlash tasdiqlanmadi. Xuddi shu tugma bilan qayta urining; yangi nusxa yaratilmaydi.'),pickerMsg)}
+ finally{busy=false;save.disabled=false;select.disabled=false}
+};
+// Pending snapshot stays fixed only while retrying the same operation.
+dialog.addEventListener('close',()=>{if(!busy)pending=null});
+onAuthStateChanged(auth,async user=>{
+ if(user?.uid!==ADMIN){message.textContent='Zakazga biriktirish uchun bosh sahifada admin hisobiga kiring.';return}
+ const params=new URLSearchParams(location.search),oid=params.get('ecoOrder'),mid=params.get('ecoModel');
+ if(restoreTried||!oid||!mid)return;restoreTried=true;
+ try{admin();const snap=await getDocFromServer(doc(db,'zakazlar',oid));admin();if(!snap.exists())throw Error('Zakaz topilmadi.');const saved=modelsOf(snap.data())[mid];if(!saved?.project)throw Error('Model topilmadi yoki zakazdan olib tashlangan.');const engine=await api();admin();engine.restore(saved.project);message.style.color='#087d85';message.textContent='Zakazdagi 3D model ochildi. O‘zgartirishlar avtomatik saqlanmaydi; qayta qo‘shish yangi nusxa yaratadi.';}
+ catch(e){say(e)}
+});
+
 </script></body></html>
